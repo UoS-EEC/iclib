@@ -1,4 +1,3 @@
-#include <config.h>
 #include <ic.h>
 #include <memory_management.h>
 #include <msp430fr5994.h>
@@ -24,7 +23,7 @@ int main(void) {
         u8 *prevBlock;
         u8 *ptr = input;
 
-        // Acquire and encrypt first block directly
+        // Acquire and encrypt first block
         mm_acquire_array(ptr, AES_BLOCK_SIZE, MM_READWRITE);
         aes_encrypt(ptr, key);
         prevBlock = ptr;

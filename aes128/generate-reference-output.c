@@ -5,6 +5,8 @@
 
 #include "TI_aes_128_encr_only.h"
 
+#define MMDATA  // Empty macro
+
 #include "lipsum.h"
 
 #define AES_BLOCK_SIZE 16u
