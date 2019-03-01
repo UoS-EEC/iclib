@@ -81,7 +81,7 @@ size_t mm_get_n_dirty_pages(void);
 void mm_init_lru(void);
 
 /**
- * @brief Restore all active pages to memory from FRAM/FLASH
+ * @brief Restore all active pages to memory from FRAM
  */
 void mm_restoreStatic(void);
 
