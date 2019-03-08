@@ -9,8 +9,8 @@
 // u8 input [64*AES_BLOCK_SIZE] MMDATA; // Random inputs
 #include "lipsum.h"  // Generated input string
 
-unsigned char key[] MMDATA = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-                              0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+unsigned char key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+                       0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
 
 /* ------ Function Declarations ---------------------------------------------*/
 
@@ -50,7 +50,7 @@ int main(void) {
         }
 
         // Release last block
-        mm_release_array(ptr, AES_BLOCK_SIZE);
+        mm_release_array(prevBlock, AES_BLOCK_SIZE);
 
         // Toggle pin to show that computation has finished
         P1OUT |= BIT2;
