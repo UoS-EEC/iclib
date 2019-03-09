@@ -305,9 +305,7 @@ void __attribute__((__interrupt__(ADC12_B_VECTOR))) adc12_isr(void) {
 }
 
 void update_thresholds(uint16_t n_suspend, uint16_t n_restore) {
-    // Factor: 1024 x voltage delta per byte saved/restored
-    static const uint32_t factor = 190;
-
+    static const uint32_t factor = DVDT;
     static uint16_t suspend_old = 0;
     static uint16_t restore_old = 0;
 
@@ -321,8 +319,8 @@ void update_thresholds(uint16_t n_suspend, uint16_t n_restore) {
 
     // newVS = (1024*V_ON + factor*bytes_to_save)/1024
     uint32_t newVS = factor * (uint32_t)(untracked + n_suspend);
-    newVS >>= 10;   // /1024
-    newVS += 2050;  // Offset (minimum voltage)
+    newVS >>= 10;  // /1024
+    newVS += VON;  // Offset (minimum voltage)
 
     // newVR = newVS + V_C + factor*bytes_to_restore/1024
     uint32_t newVR = factor * (uint32_t)(untracked + n_restore);

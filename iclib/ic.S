@@ -1,7 +1,7 @@
+
         .text
         .global suspend
         .global restore_registers
-
 
 ; @function void suspend_registers(uint16_t *registerSnapshot)
 ; @brief Captures register values into registerSnapshot before calling
@@ -37,7 +37,7 @@ suspend:
         mov.w   r15, @r12
 
 ; Call c-routine to capture memory
-        call    suspendVM
+        call    #suspendVM
         ret
 
 ; @function void restore_registers(uint16_t *registerSnapshot)
