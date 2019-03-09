@@ -33,8 +33,7 @@
 /* This file supports MSP430FR5994 devices. */
 /* Default linker script, for normal executables */
 
-/* 1.206
- * Modified with appropriate sections for iclib*/
+/* 1.206 */
 
 OUTPUT_ARCH(msp430)
 ENTRY(_start)
@@ -181,13 +180,18 @@ SECTIONS
   __interrupt_vector_54  : { KEEP (*(__interrupt_vector_54)) KEEP (*(__interrupt_vector_sysnmi)) } > VECT54
   __reset_vector         : { KEEP (*(__interrupt_vector_55)) KEEP (*(__interrupt_vector_reset)) KEEP (*(.resetvec)) } > RESETVEC
 
+  .lower.rodata :
+  {
+    . = ALIGN(2);
+    *(.lower.rodata.* .lower.rodata)
+  } > FRAM
+
   .rodata :
   {
     . = ALIGN(2);
     *(.plt)
     *(.rodata .rodata.* .gnu.linkonce.r.* .const .const:*)
     *(.rodata1)
-    *(.either.rodata.*) *(.either.rodata)
 	/* Note: By default we do not have this line:
 
          *(.either.rodata.*) *(.either.rodata)
@@ -258,9 +262,29 @@ SECTIONS
     PROVIDE (__persistent_end = .);
   } > FRAM
 
+  .upper.rodata :
+  {
+    /* Note: If this section is not defined then please add:
+
+           *(.either.rodata.*) *(.either.rodata)
+
+       to the definition of the .rodata section above.  This
+       will allow code compiled with -mdata-region=either to
+       work properly.  */
+    *(.upper.rodata.* .upper.rodata)
+  } > FRAM2
+
   .tinyram : {} > TINYRAM
 
   .fram_vars : {} > FRAM
+
+  .lower.data :
+  {
+    . = ALIGN(2);
+    PROVIDE (__datastart = .);
+    PROVIDE (__data_low = .);
+    *(.lower.data.* .lower.data)
+  } > RAM AT> FRAM
 
   .data :
   {
@@ -284,7 +308,10 @@ SECTIONS
     . = ALIGN(2);
     *(.sdata .sdata.* .gnu.linkonce.s.* D_2 D_1)
 
-    *(.either.data.* .either.data)
+    /* See the note in .rodata section about why we do not have this line here:
+
+        *(.either.data.* .either.data)
+    */
     . = ALIGN(2);
     _edata = .;
     PROVIDE (edata = .);
@@ -294,10 +321,10 @@ SECTIONS
 
   /* Note that crt0 assumes this is a multiple of two; all the
      start/stop symbols are also assumed word-aligned.  */
-  PROVIDE(__romdatastart = LOADADDR(.data));
-  PROVIDE (__romdatacopysize = SIZEOF(.data));
-  PROVIDE(__data_loadLow = LOADADDR(.data));
-  PROVIDE(__data_loadHigh = LOADADDR(.data) + SIZEOF(.data));
+  PROVIDE(__romdatastart = LOADADDR(.lower.data));
+  PROVIDE (__romdatacopysize = SIZEOF(.lower.data) + SIZEOF(.data));
+  PROVIDE(__data_loadLow = LOADADDR(.lower.data));
+  PROVIDE(__data_loadHigh = LOADADDR(.lower.data) + SIZEOF(.lower.data) + SIZEOF(.data));
 
 .mmdata : {
   PROVIDE(__mmdata_start = .);
@@ -317,12 +344,20 @@ PROVIDE(__mmdata_loadEnd = LOADADDR(.mmdata) + SIZEOF(.mmdata));
 PROVIDE(__npdata_loadLow = LOADADDR(.npdata));
 PROVIDE(__npdata_loadHigh = LOADADDR(.npdata) + SIZEOF(.npdata));
 
-/*  stack used while restoring */
+/* Restore stack */
 .cpstack (NOLOAD) : {
   __cp_stack_low = .;
   . += 0x20;
   __cp_stack_high = .;
 } > RAM
+
+  .lower.bss :
+  {
+    . = ALIGN(2);
+    PROVIDE (__bssstart = .);
+    PROVIDE (__bss_low = .);
+    *(.lower.bss.* .lower.bss)
+  } > RAM
 
   .bss (NOLOAD) :
   {
@@ -332,14 +367,17 @@ PROVIDE(__npdata_loadHigh = LOADADDR(.npdata) + SIZEOF(.npdata));
     *(.dynbss)
     *(.sbss .sbss.*)
     *(.bss .bss.* .gnu.linkonce.b.*)
-    *(.either.bss.* .either.bss)
+    /* See the note in .rodata section about why we do not have this line here:
+
+        *(.either.bss.* .either.bss)
+    */
     . = ALIGN(2);
     *(COMMON)
     PROVIDE (__bssend = .);
     PROVIDE (__bss_high = .);
   } > RAM
 
-  PROVIDE (__bsssize = SIZEOF(.bss));
+  PROVIDE (__bsssize = SIZEOF(.lower.bss) + SIZEOF(.bss));
 
   /* This section contains data that is not initialised during load
      or application reset.  */
@@ -351,6 +389,21 @@ PROVIDE(__npdata_loadHigh = LOADADDR(.npdata) + SIZEOF(.npdata));
     . = ALIGN(2);
     PROVIDE (__noinit_end = .);
   } > RAM
+
+  .upper.bss :
+  {
+    /* Note - if this section is not going to be defined then please
+       add this line back into the definition of the .bss section above:
+
+         *(.either.bss.* .either.bss)
+    */
+    . = ALIGN(2);
+    __high_bssstart = .;
+    *(.upper.bss.* .upper.bss)
+    . = ALIGN(2);
+    __high_bssend = .;
+  } > FRAM2
+  __high_bsssize = SIZEOF(.upper.bss);
 
   /* We create this section so that "end" will always be in the
      RAM region (matching .stack below), even if the .bss
@@ -494,3 +547,4 @@ PROVIDE(__npdata_loadHigh = LOADADDR(.npdata) + SIZEOF(.npdata));
 /****************************************************************************/
 
 INCLUDE msp430fr5994_symbols.ld
+
