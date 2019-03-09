@@ -30,4 +30,5 @@ add_msp_executable(
 target_link_libraries(
   ${PROJECT_NAME}
   ic
+  mul_f5
   )

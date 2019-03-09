@@ -15,3 +15,9 @@ link_directories(
     )
 
 add_msp_executable(${PROJECT_NAME}  blink.c)
+
+target_link_libraries(
+    ${PROJECT_NAME}
+    mul_f5
+    )
+

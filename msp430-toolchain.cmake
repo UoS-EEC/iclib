@@ -6,10 +6,10 @@ INCLUDE(CMakeForceCompiler)
 # Generic flags
 
 set(MSP430_CFLAGS
-    "-std=c99 -mmcu=msp430 -mcpu=msp430 -msmall -mhwmult=none -g -Wall -Wno-int-to-pointer-cast -Wno-pointer-to-int-cast -Wno-discarded-qualifiers"
+    "-std=c99 -mmcu=msp430 -mcpu=msp430 -msmall -g -Wall -Wno-int-to-pointer-cast -Wno-pointer-to-int-cast -Wno-discarded-qualifiers"
   CACHE STRING "MSP430 compilation flags")
 set(MSP430_LFLAGS
-  "-mmcu=msp430fr5994 -mcpu=msp430 -msmall -mhwmult=none"
+  "-mmcu=msp430fr5994 -mcpu=msp430 -msmall"
   CACHE STRING "MSP430 link flags")
 
 # Linker scripts

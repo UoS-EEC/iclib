@@ -18,6 +18,7 @@ include_directories(
     )
 link_directories(
     ${MSP_GCC_ROOT}/include
+    ${MSP_GCC_ROOT}/lib/gcc/msp430-elf/7.3.1/430
     ${ICLIB_ROOT}
     )
 
@@ -30,4 +31,5 @@ add_msp_executable(
 target_link_libraries(
   ${PROJECT_NAME}
   ic
+  mul_f5
   )
