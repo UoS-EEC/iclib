@@ -1,3 +1,5 @@
+#include <config.h>
+#include <memory_management.h>
 #include <stdio.h>
 #include "crc.h"
 
@@ -123,11 +125,12 @@ DWORD crc32buf(char *buf, size_t len) {
 #ifdef TRACK_MMDATA
     while (len) {
         int acquired = mm_acquire_page((u8 *)buf, len, 1, MM_READONLY);
+        char *tmp = buf;
 
-        for (int j = 0; j < acquired; j++) {
+        for (int j = 0; j < acquired; j++, buf++) {
             oldcrc32 = UPDC32(*buf, oldcrc32);
         }
-        mm_release_array((u8 *)buf, acquired);
+        mm_release_array((u8 *)tmp, acquired);
         len -= acquired;
     }
 #else

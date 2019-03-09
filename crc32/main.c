@@ -13,7 +13,8 @@ int main(void) {
     ic_init();
 
     while (1) {
-        uint32_t res = crc32buf(input, sizeof(input));
+        uint32_t result __attribute__((unused)) =
+            crc32buf(input, sizeof(input));
         // Toggle pin to show that computation has finished
         P1OUT |= BIT2;
         for (int i = 0; i < 100; i++) {
