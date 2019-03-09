@@ -1,6 +1,7 @@
 #include <ic.h>
 #include <memory_management.h>
 #include <msp430fr5994.h>
+#include <string.h>
 
 #include "input.h"
 
@@ -14,9 +15,11 @@ void matmult(int m, int n, int16_t a[m][n], int16_t b[m][n],
 
     for (u16 i = 0; i < row; i += incr) {
         for (u16 j = 0; j < col; j += incr) {
+            // Aqcuire and clear a tile of out
             for (int aq = 0; aq < incr; aq++) {
                 mm_acquire_array((u8 *)&out[aq + i][j], incr * sizeof(int16_t),
                                  MM_READWRITE);
+                memset(&out[aq + i][j], 0, incr * sizeof(int16_t));
             }
 
             for (u16 k = 0; k < row; k += incr) {
@@ -45,6 +48,7 @@ void matmult(int m, int n, int16_t a[m][n], int16_t b[m][n],
                 }
             }
 
+            // Release a tile of out
             for (int aq = 0; aq < incr; aq++) {
                 mm_release_array((u8 *)&out[aq + i][j], incr * sizeof(int16_t));
             }
