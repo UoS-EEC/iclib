@@ -1,11 +1,11 @@
 INCLUDE(CMakeForceCompiler)
 
 # Find toolchain programs
-find_program(MSP430-GCC msp430-elf-gcc $ENV{MSP430_ROOT}/bin)
-find_program(MSP430-GXX msp430-elf-g++ $ENV{MSP430_ROOT}/bin)
-find_program(MSP430-OBJCOPY msp430-elf-objcopy $ENV{MSP430_ROOT}/bin)
-find_program(MSP430-SIZE msp430-elf-size $ENV{MSP430_ROOT}/bin)
-find_program(MSP430-OBJDUMP msp430-elf-objdump $ENV{MSP430_ROOT}/bin)
+find_program(MSP430-GCC msp430-elf-gcc $ENV{MSP430_GCC_ROOT}/bin)
+find_program(MSP430-GXX msp430-elf-g++ $ENV{MSP430_GCC_ROOT}/bin)
+find_program(MSP430-OBJCOPY msp430-elf-objcopy $ENV{MSP430_GCC_ROOT}/bin)
+find_program(MSP430-SIZE msp430-elf-size $ENV{MSP430_GCC_ROOT}/bin)
+find_program(MSP430-OBJDUMP msp430-elf-objdump $ENV{MSP430_GCC_ROOT}/bin)
 find_program(MSPDEBUG mspdebug)
 
 # Define toolchain

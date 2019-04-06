@@ -25,5 +25,5 @@ set(CMAKE_EXE_LINKER_FLAGS
 link_directories(
     ${CMAKE_SOURCE_DIR}/..
     $ENV{MSP430_INC}/include
-    $ENV{MSP430_GCC}/lib/gcc/msp430-elf/7.3.1/
+    $ENV{MSP430_GCC_ROOT}/lib/gcc/msp430-elf/7.3.1/
     )

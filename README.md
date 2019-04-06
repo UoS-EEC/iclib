@@ -23,11 +23,11 @@ which will be available at [DOI 10.1145/33167813317812](https://doi.org/10.1145/
     + Extract libmsp430.so from the [MSP430 Debug stack](http://software-dl.ti.com/msp430/msp430_public_sw/mcu/msp430/MSPDS/3_13_0_001/index_FDS.html) to e.g. `/usr/lib`
 
 ### Paths
-Set environment variables `MSP_GCC_ROOT`, that points to the toolchain directory, and `MSP_GCC_INC` that points to the support file directory. This is done by e.g. adding the following two lines to your `~/.bashrc`:
+Set environment variables `MSP430_GCC_ROOT`, that points to the toolchain directory, and `MSP430_INC` that points to the support file directory. This is done by e.g. adding the following two lines to your `~/.bashrc`:
 
 ```bash
-export MSP_GCC_ROOT=<path/to/MSP430 GCC folder>
-export MSP_GCC_INC=<path/to/MSP430 support files> 
+export MSP430_GCC_ROOT=<path/to/MSP430 GCC folder>
+export MSP430_INC=<path/to/MSP430 support files>
 ```
 
 ## Getting started
