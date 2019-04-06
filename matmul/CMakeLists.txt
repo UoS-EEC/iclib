@@ -1,34 +1,22 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 
-# Environment paths
-set(MSP_GCC_ROOT "/home/sts1u16/ti/msp430-gcc")
-set(ICLIB_ROOT "${CMAKE_SOURCE_DIR}/../iclib")
-
-set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/../msp430-toolchain.cmake")
+include(${CMAKE_CURRENT_LIST_DIR}/../common.cmake)
 
 project(matmul)
 
-# CTAGS
-#set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-include_directories(
-    ${MSP_GCC_ROOT}/include
-    ${CMAKE_SOURCE_DIR}
-    ${ICLIB_ROOT}
-    )
-link_directories(
-    ${MSP_GCC_ROOT}/include
-    ${ICLIB_ROOT}
-    )
+include_directories(${ICLIB_ROOT})
+link_directories(${ICLIB_ROOT})
 
-add_msp_executable(
+add_executable(
     ${PROJECT_NAME}
     main.c
     input.h
 )
 
-target_link_libraries(
-  ${PROJECT_NAME}
-  ic
-  mul_f5
-  )
+add_msp_upload(${PROJECT_NAME})
+
+target_link_libraries(${PROJECT_NAME} ic mul_f5)
+
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${PROJECT_NAME}.elf")

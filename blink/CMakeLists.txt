@@ -1,23 +1,12 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 
-# Environment paths
-set(MSP_GCC_ROOT "/home/sts1u16/ti/msp430-gcc")
+include(${CMAKE_CURRENT_LIST_DIR}/../common.cmake)
 
-set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/../msp430-toolchain.cmake")
 project(blink)
 
-include_directories(
-    ${MSP_GCC_ROOT}/include
-    ${CMAKE_SOURCE_DIR}
-    )
-link_directories(
-    ${MSP_GCC_ROOT}/include
-    )
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_msp_executable(${PROJECT_NAME}  blink.c)
+add_executable(${PROJECT_NAME} blink.c)
+add_msp_upload(${PROJECT_NAME})
 
-target_link_libraries(
-    ${PROJECT_NAME}
-    mul_f5
-    )
-
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${PROJECT_NAME}.elf")
