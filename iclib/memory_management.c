@@ -199,7 +199,7 @@ static void writePageFRAM(u8 pageNumber) {
 }
 
 int mm_acquire_array(const u8 *memPtr, size_t len, mm_mode mode) {
-    int status;
+    int status = 0;
     // Acquire each page referenced
     const u8 *ptr = memPtr;
     size_t remaining = len;
@@ -217,7 +217,7 @@ int mm_acquire_array(const u8 *memPtr, size_t len, mm_mode mode) {
 }
 
 int mm_release_array(const u8 *memPtr, size_t len) {
-    int res;
+    int status = 0;
 
     // Error check
     if ((memPtr > &__mmdata_end) || (memPtr < &__mmdata_start) ||
@@ -230,7 +230,7 @@ int mm_release_array(const u8 *memPtr, size_t len) {
     const u8 *ptr = memPtr;
     size_t remaining = len;
     while (remaining > 0) {
-        res = mm_release(ptr);
+        status = mm_release(ptr);
         if (remaining > PAGE_SIZE) {
             ptr += PAGE_SIZE;
             remaining -= PAGE_SIZE;
@@ -239,7 +239,7 @@ int mm_release_array(const u8 *memPtr, size_t len) {
             remaining = 0;
         }
     }
-    return res;
+    return status;
 }
 
 size_t mm_get_n_active_pages(void) {

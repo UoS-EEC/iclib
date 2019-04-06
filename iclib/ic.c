@@ -98,11 +98,11 @@ static void clock_init(void) {
 }
 
 void suspendVM(void) {
-    static volatile unsigned nBytesToSave;
+    static unsigned nBytesToSave;
 
-    static volatile u8 *src;
-    static volatile u8 *dst;
-    static volatile size_t len;
+    static u8 *src;
+    static u8 *dst;
+    static size_t len;
 
     // mmdata
 #ifdef TRACK_MMDATA
@@ -147,9 +147,9 @@ void suspendVM(void) {
 }
 
 void restore(void) {
-    static volatile u8 *src __attribute__((section(".npbss")));
-    static volatile u8 *dst __attribute__((section(".npbss")));
-    static volatile size_t len __attribute__((section(".npbss")));
+    static u8 *src __attribute__((section(".npbss")));
+    static u8 *dst __attribute__((section(".npbss")));
+    static size_t len __attribute__((section(".npbss")));
 
     wakeUp = 1;  // Flag to indicate return from restore();
 

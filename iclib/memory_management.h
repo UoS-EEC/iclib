@@ -29,7 +29,6 @@ typedef int32_t i32;
  * @brief Acquire a byte from managed memory.
  * @param Pointer to variable held in static memory
  * @parapm mm_mode access mode
- * @return Status: 0=success
  */
 int mm_acquire(const u8* memPtr, mm_mode mode);
 
