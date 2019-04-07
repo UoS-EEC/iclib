@@ -5,13 +5,13 @@
 #include "ic.h"
 #include "memory_management.h"
 
-// ------------- CONSTANTS ----------------------------------------------------
-extern u8 __stack_low, __STACK_END;
-extern u8 __bss_low, __bss_high;
-extern u8 __data_low, __data_high, __data_loadLow;
-extern u8 __mmdata_start, __mmdata_end, __mmdata_loadStart;
-extern u8 __cp_stack_high;
-extern u8 __npdata_loadLow, __npdata_low, __npdata_high;
+// ------------- CONSTANTS -----------------------------------------------------
+extern uint8_t __stack_low, __stack_high;
+extern uint8_t __bss_low, __bss_high;
+extern uint8_t __data_low, __data_high, __data_loadLow;
+extern uint8_t __mmdata_start, __mmdata_end, __mmdata_loadStart;
+extern uint8_t __boot_stack_high;
+extern uint8_t __npdata_loadLow, __npdata_low, __npdata_high;
 
 // ------------- PERSISTENT VARIABLES ------------------------------------------
 #define PERSISTENT __attribute__((section(".fram_vars")))
@@ -21,21 +21,21 @@ uint16_t restore_thr PERSISTENT = 2764;  // 2.7 V initial value
 uint16_t suspend_thr PERSISTENT = 2355;  // 2.3 V initial value
 
 // Snapshots
-u16 register_snapshot[15] PERSISTENT;
+uint16_t register_snapshot[15] PERSISTENT;
 uint16_t bss_snapshot[BSS_SIZE] PERSISTENT;
 uint16_t data_snapshot[DATA_SIZE] PERSISTENT;
 uint16_t stack_snapshot[STACK_SIZE] PERSISTENT;
 
-int wakeUp PERSISTENT; /*! Flag to determine whether returning from suspend() or
-                          restore() */
+int suspending PERSISTENT;         /*! Flag to determine whether returning from
+                                  suspend() or restore() */
 int snapshotValid PERSISTENT = 0;  //! Flag: whether snapshot is valid
 int needRestore PERSISTENT = 0;    /*! Flag: whether restore is needed i.e. high
                                       when booting from a power outtage */
 
 /* ------ Function Prototypes -----------------------------------------------*/
-static inline void adc_init(void);
-static inline void gpio_init(void);
-static inline void clock_init(void);
+static void adc_init(void);
+static void gpio_init(void);
+static void clock_init(void);
 static void restore(void);
 
 /* ------ ASM functions ---------------------------------------------------- */
@@ -44,41 +44,56 @@ extern void restore_registers(uint16_t *regSnapshot);
 
 /* ------ Function Declarations ---------------------------------------------*/
 
-/**
- * This function is called before initialisation of C context (boot).
- */
-int _system_pre_init(void) {
-    __no_operation();
-    return 0;  // Disable _auto_init()
-}
+void __attribute__((interrupt(RESET_VECTOR))) iclib_boot(void) {
+    __set_SP_register(&__boot_stack_high);  // Boot stack
 
-void ic_init(void) {
-    // Indicate powerup
-    needRestore = 1;
+    needRestore = 1;  // Indicate powerup
 
-    // Peripheral inits
-    gpio_init();
+    WDTCTL = WDTPW | WDTHOLD;  // Stop watchdog timer
+
+    // Initialise
+    memcpy(&__npdata_low, &__npdata_loadLow, &__npdata_high - &__npdata_low);
     clock_init();
+    gpio_init();
     adc_init();
+
+    __bis_SR_register(LPM4_bits + GIE);  // Enter LPM4 with interrupts enabled
+    // Processor sleeps
+    // ...
+    // Processor wakes up after interrupt
+    // *!Remaining code in this function is only executed during the first
+    // boot!*
+    //
+    __set_SP_register(&__stack_high);  // Runtime stack
+    memcpy(&__data_low, &__data_loadLow, &__data_high - &__data_low);
+    mm_init_lru();
 
 #ifndef TRACK_MMDATA
     uint16_t mmdata_size = &__mmdata_end - &__mmdata_start;
     update_thresholds(mmdata_size, mmdata_size);
 #endif
 
-    __bis_SR_register(LPM4_bits + GIE);  // Enter LPM4 with interrupts enabled
-    // Processor sleeps
-    // ...
-    // Processor wakes up after interrupt
-    // *!This code is only executed during the first boot!*
-    __no_operation();  // For debug
+    P6OUT |= BIT0;  // Indicate active
+    int main();     // Suppress implicit decl. warning
+    main();
 }
 
 static void gpio_init(void) {
-    // LEDs on P1.0 and P1.1
-    P1OUT = 0;
-    P1DIR |= 0xFF;
-    // Disable GPIO power-on default high-impedance mode
+    // Need to initialize all ports/pins to reduce power consump'n
+    P1OUT = 0;  // LEDs on P1.0 and P1.1
+    P1DIR = 0xff;
+    P2OUT = 0;
+    P2DIR = 0xff;
+    P3OUT = 0;
+    P3DIR = 0xff;
+    P4OUT = BIT0;  // Pull-up on board
+    P4DIR = 0xff;
+    P6OUT = 0;
+    P6DIR = 0xff;
+    P7OUT = 0;
+    P7DIR = 0xff;
+    P8OUT = 0;
+    P8DIR = 0xff;
     PM5CTL0 &= ~LOCKLPM5;
     PCIFG = 0;  // Clear pending interrupts
 }
@@ -87,22 +102,19 @@ static void clock_init(void) {
     CSCTL0_H = 0xA5;  // Unlock register
 
     /* 16 MHz clock [Source: Table 5-6 from datasheet SLASE54B] */
-    CSCTL1 = DCORSEL | DCOFSEL_4;  // 16 MHz
+    CSCTL1 = DCORSEL | DCOFSEL_4;  // DCO = 16 MHz
 
-    // Selects the ACLK, MCLK AND SMCLK sources register
+    // Set ACLK = VLO; MCLK = DCO/2; SMCLK = DCO/2;
     CSCTL2 = SELA_1 + SELS_3 + SELM_3;
-
-    // Set ACLK = VLO; MCLK = DCO; SMCLK = DCO;
-    // MCLK, SMCLK and ACLK source divider/prescaler register.
     CSCTL3 = DIVA_0 + DIVS_1 + DIVM_1;
 }
 
 void suspendVM(void) {
-    static unsigned nBytesToSave;
+    unsigned nBytesToSave;
 
-    static u8 *src;
-    static u8 *dst;
-    static size_t len;
+    uint8_t *src;
+    uint8_t *dst;
+    size_t len;
 
     // mmdata
 #ifdef TRACK_MMDATA
@@ -111,21 +123,21 @@ void suspendVM(void) {
 #else
     // Save entire section
     src = &__mmdata_start;
-    dst = (u8 *)&__mmdata_loadStart;
+    dst = (uint8_t *)&__mmdata_loadStart;
     len = &__mmdata_end - src;
     memcpy(dst, src, len);
 #endif
 
     // bss
     src = &__bss_low;
-    dst = (u8 *)bss_snapshot;
+    dst = (uint8_t *)bss_snapshot;
     len = &__bss_high - src;
     memcpy(dst, src, len);
     nBytesToSave += len;
 
     // data
     src = &__data_low;
-    dst = (u8 *)data_snapshot;
+    dst = (uint8_t *)data_snapshot;
     len = &__data_high - src;
     memcpy(dst, src, len);
     nBytesToSave += len;
@@ -133,35 +145,35 @@ void suspendVM(void) {
     // stack
     // stack_low-----[SP-------stack_high]
 #ifdef TRACK_STACK
-    src = (u8 *)register_snapshot[0];  // Saved SP
+    src = (uint8_t *)register_snapshot[0];  // Saved SP
 #else
     src = &__stack_low;
 #endif
-    len = &__STACK_END - src;
+    len = &__stack_high - src;
     uint16_t offset = (uint16_t)(src - &__stack_low) / 2;  // word offset
-    dst = (u8 *)&stack_snapshot[offset];
+    dst = (uint8_t *)&stack_snapshot[offset];
     memcpy((void *)dst, (void *)src, len);
     nBytesToSave += len;
 
-    wakeUp = 0;
+    suspending = 1;
 }
 
 void restore(void) {
-    static u8 *src __attribute__((section(".npbss")));
-    static u8 *dst __attribute__((section(".npbss")));
-    static size_t len __attribute__((section(".npbss")));
+    uint8_t *src;
+    uint8_t *dst;
+    size_t len;
 
-    wakeUp = 1;  // Flag to indicate return from restore();
+    suspending = 0;
 
     // data
     dst = &__data_low;
-    src = (u8 *)data_snapshot;
+    src = (uint8_t *)data_snapshot;
     len = &__data_high - dst;
     memcpy(dst, src, len);
 
     // bss
     dst = &__bss_low;
-    src = (u8 *)bss_snapshot;
+    src = (uint8_t *)bss_snapshot;
     len = &__bss_high - dst;
     memcpy(dst, src, len);
 
@@ -173,23 +185,21 @@ void restore(void) {
     // Restore entire section
     dst = &__mmdata_start;
     len = &__mmdata_end - dst;
-    src = (u8 *)&__mmdata_loadStart;
+    src = (uint8_t *)&__mmdata_loadStart;
     memcpy(dst, src, len);
 #endif
 
     // stack
 #ifdef TRACK_STACK
-    dst = (u8 *)register_snapshot[0];  // Saved stack pointer
+    dst = (uint8_t *)register_snapshot[0];  // Saved stack pointer
 #else
     dst = &__stack_low;  // Save full stack
 #endif
-    len = &__STACK_END - dst;
-    uint16_t offset = (u16)((u16 *)dst - (u16 *)&__stack_low);  // word offset
-    src = (u8 *)&stack_snapshot[offset];
-
-    /* Move to separate stack space before restoring original stack. */
-    __set_SP_register(&__cp_stack_high);  // Move to separate stack
-    memcpy(dst, src, len);                // Restore default stack
+    len = &__stack_high - dst;
+    uint16_t offset =
+        (uint16_t)((uint16_t *)dst - (uint16_t *)&__stack_low);  // word offset
+    src = (uint8_t *)&stack_snapshot[offset];
+    memcpy(dst, src, len);  // Restore default stack
 
     restore_registers(register_snapshot);  // Returns to line after suspend()
 }
@@ -252,18 +262,10 @@ void __attribute__((__interrupt__(ADC12_B_VECTOR))) adc12_isr(void) {
 
             if (needRestore) {
                 if (snapshotValid) {  // Restore from snapshot
-                    memcpy(&__npdata_low, &__npdata_loadLow,
-                           &__npdata_high - &__npdata_low);
-                    P1OUT |= BIT2;  // dbg
+                    P1OUT |= BIT2;    // dbg
                     restore();  // **Restore returns to line after suspend()**
-                } else {        // Boot from flash
-                    memcpy(&__data_low, &__data_loadLow,
-                           &__data_high - &__data_low);
-
-                    memcpy(&__npdata_low, &__npdata_loadLow,
-                           &__npdata_high - &__npdata_low);
-                    mm_init_lru();
-                    P6OUT |= BIT0;  // Indicate active
+                } else {
+                    // Boot in iclib_boot
                 }
                 needRestore = 0;
             } else {            // Survived power-outage, no need to restore
@@ -287,7 +289,7 @@ void __attribute__((__interrupt__(ADC12_B_VECTOR))) adc12_isr(void) {
             // 1. when returning from suspend(), 2. when returning from
             // restore()
             P1OUT &= ~BIT4;
-            if (wakeUp == 0) {  // Returning from suspend(), go to sleep
+            if (suspending) {  // Returning from suspend(), go to sleep
                 snapshotValid = 1;
                 __bis_SR_register_on_exit(LPM4_bits);  // Sleep on return
             } else {  // Returning from Restore(), continue execution
@@ -313,9 +315,9 @@ void update_thresholds(uint16_t n_suspend, uint16_t n_restore) {
         return;  // No need for updates
     }
 
-    uint16_t untracked =
-        (u16)((&__data_high - &__data_low) + (&__bss_high - &__bss_low) +
-              (&__STACK_END - &__stack_low));
+    const uint16_t untracked =
+        (uint16_t)((&__data_high - &__data_low) + (&__bss_high - &__bss_low) +
+                   (&__stack_high - &__stack_low));
 
     // newVS = (1024*V_ON + factor*bytes_to_save)/1024
     uint32_t newVS = factor * (uint32_t)(untracked + n_suspend);
@@ -332,8 +334,8 @@ void update_thresholds(uint16_t n_suspend, uint16_t n_restore) {
             ;  // Error: No safe restore thr found
     }
 
-    restore_thr = (u16)newVR;
-    suspend_thr = (u16)newVS;
+    restore_thr = (uint16_t)newVR;
+    suspend_thr = (uint16_t)newVS;
 
     ADC12HI = restore_thr > VMAX ? VMAX : restore_thr;
     ADC12LO = suspend_thr;

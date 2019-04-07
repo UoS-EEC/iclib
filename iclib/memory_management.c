@@ -8,17 +8,17 @@
 
 /*************************** Global Definitions ******************************/
 
-static u16 mm_n_dirty_pages __attribute__((section(".data"))) = 0;
-static u16 mm_n_active_pages __attribute__((section(".data"))) = 0;
+static uint16_t mm_n_dirty_pages __attribute__((section(".data"))) = 0;
+static uint16_t mm_n_active_pages __attribute__((section(".data"))) = 0;
 
 /************************** Constant Definitions *****************************/
-extern unsigned char __mmdata_start;
-extern unsigned char __mmdata_end;
-extern unsigned char __mmdata_loadStart;
+extern uint8_t __mmdata_start;
+extern uint8_t __mmdata_end;
+extern uint8_t __mmdata_loadStart;
 
 struct LRU_candidate {
-    u8 pageNumber;
-    u8 tableIdx;
+    uint8_t pageNumber;
+    uint8_t tableIdx;
 };
 
 /**************************** Type Definitions *******************************/
@@ -36,28 +36,30 @@ struct LRU_candidate {
 #define MODIFIED 0x40     //! Mask to check if modified
 
 /************************** Function Prototypes ******************************/
-static void writePageFRAM(u8 pageNumber);
-static void loadPage(u8 pageNumber);
-static void addLRU(u8 pageNumber);
-static inline void clearLRU(u8 index);
-static void clearLRUPage(u8 pageNumber);
+static void writePageFRAM(uint8_t pageNumber);
+static void loadPage(uint8_t pageNumber);
+static void addLRU(uint8_t pageNumber);
+static void clearLRU(uint8_t index);
+static void clearLRUPage(uint8_t pageNumber);
 
 /*************************** Extern Functions ********************************/
 
 /************************** Variable Definitions *****************************/
 
-static u8 attributeTable[NPAGES] __attribute__((section(".data"))) = {0};
-static u8 lruTable[MAX_DIRTY_PAGES];
+static uint8_t attributeTable[NPAGES] __attribute__((section(".data"))) = {0};
+static uint8_t lruTable[MAX_DIRTY_PAGES];
 
 /*************************** Function definitions ****************************/
 
-int mm_acquire(const u8 *memPtr, mm_mode mode) {
-    if ((&__mmdata_start > (u8 *)memPtr) || (&__mmdata_end < (u8 *)memPtr)) {
+int mm_acquire(const uint8_t *memPtr, mm_mode mode) {
+    if ((&__mmdata_start > (uint8_t *)memPtr) ||
+        (&__mmdata_end < (uint8_t *)memPtr)) {
         while (1)
             ;  // Error: Pointer out of bounds.
     }
 
-    u16 pageNumber = ((u16)memPtr - (u16)&__mmdata_start) / PAGE_SIZE;
+    uint16_t pageNumber =
+        ((uint16_t)memPtr - (uint16_t)&__mmdata_start) / PAGE_SIZE;
 
     if ((attributeTable[pageNumber] & REFCNT_MASK) >= 64) {
         while (1)
@@ -69,7 +71,7 @@ int mm_acquire(const u8 *memPtr, mm_mode mode) {
         if (mm_n_dirty_pages >= MAX_DIRTY_PAGES) {
             // Need to write back an inactive and dirty page first
             for (int i = MAX_DIRTY_PAGES - 1; i >= 0; i--) {
-                u8 candidate = lruTable[i];
+                uint8_t candidate = lruTable[i];
                 if (candidate != DUMMY_PAGE) {
                     if ((attributeTable[candidate] & REFCNT_MASK) == 0 &&
                         (attributeTable[candidate] & LOADED) &&
@@ -115,8 +117,9 @@ int mm_acquire(const u8 *memPtr, mm_mode mode) {
     return 0;
 }
 
-int mm_release(const u8 *memPtr) {
-    u16 pageNumber = ((u16)memPtr - (u16)&__mmdata_start) / PAGE_SIZE;
+int mm_release(const uint8_t *memPtr) {
+    uint16_t pageNumber =
+        ((uint16_t)memPtr - (uint16_t)&__mmdata_start) / PAGE_SIZE;
     if ((attributeTable[pageNumber] & REFCNT_MASK) > 0) {
         attributeTable[pageNumber]--;
         if ((attributeTable[pageNumber] & REFCNT_MASK) == 0) {
@@ -165,28 +168,28 @@ unsigned mm_suspendStatic(void) {
  * @brief Write a page to FRAM
  * @param pageNumber
  */
-static void writePageFRAM(u8 pageNumber) {
-    u16 dstStart;
-    u16 srcStart;
-    u16 pageOffset = pageNumber * PAGE_SIZE;
-    u16 len;
+static void writePageFRAM(uint8_t pageNumber) {
+    uint16_t dstStart;
+    uint16_t srcStart;
+    uint16_t pageOffset = pageNumber * PAGE_SIZE;
+    uint16_t len;
 
     if (!(attributeTable[pageNumber] & MODIFIED)) {
         return;
     }
 
-    u16 old_gie = __get_SR_register() & GIE;
+    uint16_t old_gie = __get_SR_register() & GIE;
     __disable_interrupt();  // Critical section (attributes get messed up if
                             // interrupted)
-    srcStart = (u16)&__mmdata_start + pageOffset;
-    dstStart = (u16)(&__mmdata_loadStart) + pageOffset;
+    srcStart = (uint16_t)&__mmdata_start + pageOffset;
+    dstStart = (uint16_t)(&__mmdata_loadStart) + pageOffset;
     len = PAGE_SIZE;
-    if (srcStart + PAGE_SIZE > (u16)&__mmdata_end) {
-        len = (u16)&__mmdata_end - srcStart;
+    if (srcStart + PAGE_SIZE > (uint16_t)&__mmdata_end) {
+        len = (uint16_t)&__mmdata_end - srcStart;
     }
 
     // Save page
-    memcpy((u8 *)dstStart, (u8 *)srcStart, len);
+    memcpy((uint8_t *)dstStart, (uint8_t *)srcStart, len);
 
     if ((attributeTable[pageNumber] & REFCNT_MASK) == 0) {
         // Page is clean
@@ -198,10 +201,10 @@ static void writePageFRAM(u8 pageNumber) {
     }
 }
 
-int mm_acquire_array(const u8 *memPtr, size_t len, mm_mode mode) {
+int mm_acquire_array(const uint8_t *memPtr, size_t len, mm_mode mode) {
     int status = 0;
     // Acquire each page referenced
-    const u8 *ptr = memPtr;
+    const uint8_t *ptr = memPtr;
     size_t remaining = len;
     while (remaining > 0) {
         status = mm_acquire(ptr, mode);
@@ -216,7 +219,7 @@ int mm_acquire_array(const u8 *memPtr, size_t len, mm_mode mode) {
     return status;
 }
 
-int mm_release_array(const u8 *memPtr, size_t len) {
+int mm_release_array(const uint8_t *memPtr, size_t len) {
     int status = 0;
 
     // Error check
@@ -227,7 +230,7 @@ int mm_release_array(const u8 *memPtr, size_t len) {
     }
 
     // Release each page referenced
-    const u8 *ptr = memPtr;
+    const uint8_t *ptr = memPtr;
     size_t remaining = len;
     while (remaining > 0) {
         status = mm_release(ptr);
@@ -254,13 +257,13 @@ size_t mm_get_n_active_pages(void) {
 
 size_t mm_get_n_dirty_pages(void) { return mm_n_dirty_pages; }
 
-int mm_acquire_page(const u8 *memPtr, size_t nElements, size_t elementSize,
+int mm_acquire_page(const uint8_t *memPtr, size_t nElements, size_t elementSize,
                     mm_mode mode) {
     int bytesAcquired;
 
     // Check if first element crosses a page boundary
-    u16 pageNumberStart = (memPtr - &__mmdata_start) / PAGE_SIZE;
-    u16 pageNumberEnd =
+    uint16_t pageNumberStart = (memPtr - &__mmdata_start) / PAGE_SIZE;
+    uint16_t pageNumberEnd =
         (memPtr + elementSize - 1  // end address of first element
          - &__mmdata_start         // - start address
          ) /
@@ -290,21 +293,21 @@ int mm_acquire_page(const u8 *memPtr, size_t nElements, size_t elementSize,
  * @brief Load page from FRAM if it is not already loaded.
  * @param pageNumber
  */
-static void loadPage(u8 pageNumber) {
+static void loadPage(uint8_t pageNumber) {
     if (!(attributeTable[pageNumber] & LOADED)) {
-        u8 *srcStart;
-        u8 *dstStart;
-        u16 len;
-        u16 pageOffset = pageNumber * PAGE_SIZE;
+        uint8_t *srcStart;
+        uint8_t *dstStart;
+        uint16_t len;
+        uint16_t pageOffset = pageNumber * PAGE_SIZE;
 
         dstStart = &__mmdata_start + pageOffset;      // Memory address
         srcStart = &__mmdata_loadStart + pageOffset;  // Snapshot address
         len = PAGE_SIZE;
-        if ((u16)dstStart + PAGE_SIZE > (u16)&__mmdata_end) {
-            len = (u16)&__mmdata_end - (u16)dstStart;
+        if ((uint16_t)dstStart + PAGE_SIZE > (uint16_t)&__mmdata_end) {
+            len = (uint16_t)&__mmdata_end - (uint16_t)dstStart;
         }
 
-        memcpy((u8 *)dstStart, (u8 *)srcStart, len);
+        memcpy((uint8_t *)dstStart, (uint8_t *)srcStart, len);
         attributeTable[pageNumber] |= LOADED;
     }
 }
@@ -322,8 +325,8 @@ void mm_init_lru(void) {
  * @brief Add a new reference to LRU table.
  * @param pageNumber
  */
-static void addLRU(u8 pageNumber) {
-    u8 tmp1, tmp2;
+static void addLRU(uint8_t pageNumber) {
+    uint8_t tmp1, tmp2;
 
     if (pageNumber > NPAGES) {
         while (1)
@@ -362,13 +365,13 @@ static void addLRU(u8 pageNumber) {
  * @brief Clear a page from the LRU table at index.
  * @param index
  */
-static void clearLRU(u8 index) { lruTable[index] = DUMMY_PAGE; }
+static void clearLRU(uint8_t index) { lruTable[index] = DUMMY_PAGE; }
 
 /**
  * @brief Clear a page from the LRU table.
  * @param pageNumber
  */
-static void clearLRUPage(u8 pageNumber) {
+static void clearLRUPage(uint8_t pageNumber) {
     for (int i = MAX_DIRTY_PAGES - 1; i >= 0; i--) {
         if (lruTable[i] == pageNumber) {
             lruTable[i] = DUMMY_PAGE;

@@ -12,7 +12,6 @@ add_compile_options(
     -std=c99
     -mmcu=msp430fr5994
     -msmall
-    -g
     -fno-common
     -Wall
     )
@@ -26,4 +25,11 @@ link_directories(
     ${CMAKE_SOURCE_DIR}/..
     $ENV{MSP430_INC}/include
     $ENV{MSP430_GCC_ROOT}/lib/gcc/msp430-elf/7.3.1/
+    )
+
+link_libraries( # Global link flags
+    -nostartfiles
+    #-nodefaultlibs
+    #-lc
+    #-lgcc
     )

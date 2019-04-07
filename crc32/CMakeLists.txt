@@ -22,4 +22,8 @@ add_msp_upload(${PROJECT_NAME})
 
 target_link_libraries(${PROJECT_NAME} ic mul_f5)
 
-set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${PROJECT_NAME}.elf")
+set_target_properties(${PROJECT_NAME} PROPERTIES SUFFIX ".elf")
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${MSP430-SIZE} "$<TARGET_FILE:${PROJECT_NAME}>"
+    COMMENT "Invoking: msp430-elf-size")

@@ -1,3 +1,4 @@
+.file "ic.S"
 
         .text
         .global suspend

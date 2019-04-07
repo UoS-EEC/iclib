@@ -10,7 +10,6 @@
 
 int main(void) {
     WDTCTL = WDTPW | WDTHOLD;  // Stop watchdog timer
-    ic_init();
 
     while (1) {
         uint32_t result __attribute__((unused)) =

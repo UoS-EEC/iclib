@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 char input[2048] MMDATA =
     "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo "
     "ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis "

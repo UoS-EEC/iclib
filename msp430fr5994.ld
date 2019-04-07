@@ -344,11 +344,11 @@ PROVIDE(__mmdata_loadEnd = LOADADDR(.mmdata) + SIZEOF(.mmdata));
 PROVIDE(__npdata_loadLow = LOADADDR(.npdata));
 PROVIDE(__npdata_loadHigh = LOADADDR(.npdata) + SIZEOF(.npdata));
 
-/* Restore stack */
-.cpstack (NOLOAD) : {
-  __cp_stack_low = .;
-  . += 0x20;
-  __cp_stack_high = .;
+/* Boot stack */
+.boot_stack (NOLOAD) : {
+  __boot_stack_low = .;
+  . += 0x80;
+  __boot_stack_high = .;
 } > RAM
 
   .lower.bss :
@@ -433,6 +433,7 @@ PROVIDE(__npdata_loadHigh = LOADADDR(.npdata) + SIZEOF(.npdata));
     PROVIDE (__stack_low = .);
     *(.stack)
     PROVIDE (__STACK_END = .);
+    PROVIDE (__stack_high = .);
   }
 
   .lower.text :

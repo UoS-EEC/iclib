@@ -16,13 +16,6 @@
 /** Type definitions *********************************************************/
 typedef enum { MM_READONLY, MM_READWRITE } mm_mode;
 
-typedef uint8_t u8;
-typedef uint64_t u64;
-typedef uint32_t u32;
-typedef uint16_t u16;
-typedef int16_t i16;
-typedef int32_t i32;
-
 /************************** Function Prototypes ******************************/
 
 /**
@@ -30,14 +23,14 @@ typedef int32_t i32;
  * @param Pointer to variable held in static memory
  * @parapm mm_mode access mode
  */
-int mm_acquire(const u8* memPtr, mm_mode mode);
+int mm_acquire(const uint8_t* memPtr, mm_mode mode);
 
 /**
  * @brief Release a byte from managed memory.
  * @param Pointer to variable held in static memory
  * @return Status: 0=success
  */
-int mm_release(const u8* memPtr);
+int mm_release(const uint8_t* memPtr);
 
 /**
  * @brief Acquire an array from static memory
@@ -46,7 +39,7 @@ int mm_release(const u8* memPtr);
  * @param mm_mode access mode
  * @return
  */
-int mm_acquire_array(const u8* memPtr, size_t len, mm_mode mode);
+int mm_acquire_array(const uint8_t* memPtr, size_t len, mm_mode mode);
 
 /**
  * @brief Release array
@@ -54,7 +47,7 @@ int mm_acquire_array(const u8* memPtr, size_t len, mm_mode mode);
  * @param len size of array
  * @return
  */
-int mm_release_array(const u8* memPtr, size_t len);
+int mm_release_array(const uint8_t* memPtr, size_t len);
 
 /**
  * @brief Aquire data from an array one page at a time. May load two pages if
@@ -64,7 +57,7 @@ int mm_release_array(const u8* memPtr, size_t len);
  * @param mm_mode access mode
  * @return Number of elements acquired.
  */
-int mm_acquire_page(const u8* memPtr, size_t nElements, size_t elementSize,
+int mm_acquire_page(const uint8_t* memPtr, size_t nElements, size_t elementSize,
                     mm_mode mode);
 /**
  * @brief Get the number of currently active pages

@@ -9,6 +9,7 @@ GTAGS
 *~
 *.autosave
 *.a
+*.bin
 *.core
 *.moc
 *.o

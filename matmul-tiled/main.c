@@ -13,27 +13,27 @@ void matmult(int m, int n, int16_t a[m][n], int16_t b[m][n],
     int row = m, col = n;
     int incr = 5;
 
-    for (u16 i = 0; i < row; i += incr) {
-        for (u16 j = 0; j < col; j += incr) {
+    for (uint16_t i = 0; i < row; i += incr) {
+        for (uint16_t j = 0; j < col; j += incr) {
             // Aqcuire and clear a tile of out
             for (int aq = 0; aq < incr; aq++) {
-                mm_acquire_array((u8 *)&out[aq + i][j], incr * sizeof(int16_t),
-                                 MM_READWRITE);
+                mm_acquire_array((uint8_t *)&out[aq + i][j],
+                                 incr * sizeof(int16_t), MM_READWRITE);
                 memset(&out[aq + i][j], 0, incr * sizeof(int16_t));
             }
 
-            for (u16 k = 0; k < row; k += incr) {
+            for (uint16_t k = 0; k < row; k += incr) {
                 // Acquire a tile of A and B
                 for (int aq = 0; aq < incr; aq++) {
-                    mm_acquire_array((u8 *)&a[aq + i][k],
+                    mm_acquire_array((uint8_t *)&a[aq + i][k],
                                      incr * sizeof(int16_t), MM_READWRITE);
-                    mm_acquire_array((u8 *)&b[aq + k][j],
+                    mm_acquire_array((uint8_t *)&b[aq + k][j],
                                      incr * sizeof(int16_t), MM_READWRITE);
                 }
                 // Calculate tile product
-                for (u16 x = i; x < i + incr; x++) {
-                    for (u16 y = j; y < j + incr; y++) {
-                        for (u16 z = k; z < k + incr; z++) {
+                for (uint16_t x = i; x < i + incr; x++) {
+                    for (uint16_t y = j; y < j + incr; y++) {
+                        for (uint16_t z = k; z < k + incr; z++) {
                             out[x][y] += a[x][z] * b[z][y];
                         }
                     }
@@ -41,16 +41,17 @@ void matmult(int m, int n, int16_t a[m][n], int16_t b[m][n],
 
                 // Release a tile of A and B
                 for (int aq = 0; aq < incr; aq++) {
-                    mm_release_array((u8 *)&a[aq + i][k],
+                    mm_release_array((uint8_t *)&a[aq + i][k],
                                      incr * sizeof(int16_t));
-                    mm_release_array((u8 *)&b[aq + k][j],
+                    mm_release_array((uint8_t *)&b[aq + k][j],
                                      incr * sizeof(int16_t));
                 }
             }
 
             // Release a tile of out
             for (int aq = 0; aq < incr; aq++) {
-                mm_release_array((u8 *)&out[aq + i][j], incr * sizeof(int16_t));
+                mm_release_array((uint8_t *)&out[aq + i][j],
+                                 incr * sizeof(int16_t));
             }
         }
     }
@@ -58,7 +59,6 @@ void matmult(int m, int n, int16_t a[m][n], int16_t b[m][n],
 
 int main(void) {
     WDTCTL = WDTPW | WDTHOLD;  // Stop watchdog timer
-    ic_init();
 
     while (1) {
         matmult(MATSIZE, MATSIZE, a, b, output);

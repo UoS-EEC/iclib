@@ -6,7 +6,7 @@
 #include "TI_aes_128_encr_only.h"
 #define AES_BLOCK_SIZE (16u)  // bytes
 
-// u8 input [64*AES_BLOCK_SIZE] MMDATA; // Random inputs
+// uint8_t input [64*AES_BLOCK_SIZE] MMDATA; // Random inputs
 #include "lipsum.h"  // Generated input string
 
 unsigned char key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -16,12 +16,11 @@ unsigned char key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 
 int main(void) {
     WDTCTL = WDTPW | WDTHOLD;  // Stop watchdog timer
-    ic_init();
 
     while (1) {
         // AES128 in Cipher Block Chaining mode
-        u8 *prevBlock;
-        u8 *ptr = input;
+        uint8_t *prevBlock;
+        uint8_t *ptr = input;
 
         // Acquire and encrypt first block
         mm_acquire_array(ptr, AES_BLOCK_SIZE, MM_READWRITE);
