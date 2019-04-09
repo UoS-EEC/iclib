@@ -36,7 +36,8 @@
 /* 1.206 */
 
 OUTPUT_ARCH(msp430)
-ENTRY(_start)
+/* ENTRY(_start) */
+ENTRY(iclib_boot)
 
 MEMORY {
   TINYRAM          : ORIGIN = 0xA, LENGTH = 0x0016

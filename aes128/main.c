@@ -6,7 +6,6 @@
 #include "TI_aes_128_encr_only.h"
 #define AES_BLOCK_SIZE (16u)  // bytes
 
-// uint8_t input [64*AES_BLOCK_SIZE] MMDATA; // Random inputs
 #include "lipsum.h"  // Generated input string
 
 unsigned char key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -52,9 +51,10 @@ int main(void) {
         mm_release_array(prevBlock, AES_BLOCK_SIZE);
 
         // Toggle pin to show that computation has finished
-        P1OUT |= BIT2;
-        for (int i = 0; i < 100; i++) {
-        }
-        P1OUT &= ~BIT2;
+        P1OUT |= BIT3;
+        for (int i = 0; i < 100; i++)
+            ;
+
+        P1OUT &= ~BIT3;
     }
 }

@@ -1,6 +1,9 @@
 #ifndef SRC_CONFIG_H_
 #define SRC_CONFIG_H_
 
+/* ------ Device settings ---------------------------------------------------*/
+#define FRAM_WAIT 0  // Number of wait states on FRAM cache miss (0-15)
+
 /* ------ Suspend/Restore Mode ----------------------------------------------*/
 #define TRACK_MMDATA
 #define TRACK_STACK

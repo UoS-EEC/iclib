@@ -44,12 +44,12 @@ extern void restore_registers(uint16_t *regSnapshot);
 
 /* ------ Function Declarations ---------------------------------------------*/
 
-void __attribute__((interrupt(RESET_VECTOR))) iclib_boot(void) {
+void __attribute__((interrupt(RESET_VECTOR), naked)) iclib_boot() {
     __set_SP_register(&__boot_stack_high);  // Boot stack
 
-    needRestore = 1;  // Indicate powerup
-
     WDTCTL = WDTPW | WDTHOLD;  // Stop watchdog timer
+
+    needRestore = 1;  // Indicate powerup
 
     // Initialise
     memcpy(&__npdata_low, &__npdata_loadLow, &__npdata_high - &__npdata_low);
@@ -94,12 +94,25 @@ static void gpio_init(void) {
     P7DIR = 0xff;
     P8OUT = 0;
     P8DIR = 0xff;
+
+    /* Interrupts from S1 and S2 buttons and P5.7 pin*/
+    P5OUT = BIT5 | BIT6;            // Pull-up resistor
+    P5REN = BIT5 | BIT6;            // Pull-up mode
+    P5DIR = ~(BIT5 | BIT6 | BIT7);  // Set all but to output direction
+    P5IES = BIT5 | BIT6;            // Falling edge
+    P5SEL0 = 0;
+    P5SEL1 = 0;
+    P5IFG = 0;  // Clear pending interrupts
+    // P5IE = BIT5 | BIT7;  // Enable restore irq
+
+    // Disable GPIO power-on default high-impedance mode
     PM5CTL0 &= ~LOCKLPM5;
-    PCIFG = 0;  // Clear pending interrupts
 }
 
 static void clock_init(void) {
-    CSCTL0_H = 0xA5;  // Unlock register
+    CSCTL0_H = 0xA5;            // Unlock register
+    FRCTL0_H = 0xA5;            // Unlock FRAM ctrl
+    FRCTL0_L = FRAM_WAIT << 4;  // wait states
 
     /* 16 MHz clock [Source: Table 5-6 from datasheet SLASE54B] */
     CSCTL1 = DCORSEL | DCOFSEL_4;  // DCO = 16 MHz
@@ -263,11 +276,11 @@ void __attribute__((__interrupt__(ADC12_B_VECTOR))) adc12_isr(void) {
             if (needRestore) {
                 if (snapshotValid) {  // Restore from snapshot
                     P1OUT |= BIT2;    // dbg
+                    __set_SP_register(&__boot_stack_high);  // Boot stack
                     restore();  // **Restore returns to line after suspend()**
                 } else {
                     // Boot in iclib_boot
                 }
-                needRestore = 0;
             } else {            // Survived power-outage, no need to restore
                 P6OUT |= BIT0;  // Indicate active
             }
@@ -284,6 +297,7 @@ void __attribute__((__interrupt__(ADC12_B_VECTOR))) adc12_isr(void) {
             P6OUT &= ~BIT0;  // Indicate not active
             snapshotValid = 0;
             suspend(register_snapshot);
+            needRestore = 0;
 
             //!! Execution enters this line either:
             // 1. when returning from suspend(), 2. when returning from
@@ -304,6 +318,40 @@ void __attribute__((__interrupt__(ADC12_B_VECTOR))) adc12_isr(void) {
 
     ADC12IFGR2 = 0;                  // Clear Interrupt flags
     __bis_SR_register_on_exit(GIE);  // enable global interrupts
+}
+
+// Port 5 interrupt service routine
+void __attribute__((__interrupt__(PORT5_VECTOR))) port5_isr_handler(void) {
+    __disable_interrupt();
+    // if (__get_SR_register() & LPM4_bits) {  // if left LPM
+    if (P5IFG & BIT5) {       // Restore
+        P5IE = BIT6 | BIT7;   // Disable restore irq, enable suspend irq
+                              // if (needRestore) {
+        if (snapshotValid) {  // Restore from snapshot
+            __set_SP_register(&__boot_stack_high);  // Boot stack
+            restore(); /* !** Restore returns to line after suspend **! */
+        } else {
+            // Boot in iclib_boot
+        }
+        //}
+        __bic_SR_register_on_exit(LPM4_bits);  // Wake up on return
+    } else if (P5IFG & BIT6) {                 // suspend (active low)
+        P5IE = BIT5 | BIT7;  // Disable suspend irq, enable restore irq
+        snapshotValid = 0;
+        suspend(register_snapshot);
+        needRestore = 0;
+        snapshotValid = 1;
+
+        if (suspending) {  // Returning from suspend(), go to sleep
+            __bis_SR_register_on_exit(LPM4_bits);  // Sleep upon return
+
+        } else {  // Returning from Restore(), continue execution
+            __bic_SR_register_on_exit(LPM4_bits);  // Wake up on return
+        }
+    }
+
+    PCIFG &= ~(BIT5 | BIT6 | BIT7);  // Clear interrupt flags
+    __bis_SR_register_on_exit(GIE);
 }
 
 void update_thresholds(uint16_t n_suspend, uint16_t n_restore) {
@@ -340,3 +388,4 @@ void update_thresholds(uint16_t n_suspend, uint16_t n_restore) {
     ADC12HI = restore_thr > VMAX ? VMAX : restore_thr;
     ADC12LO = suspend_thr;
 }
+

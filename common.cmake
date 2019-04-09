@@ -10,8 +10,9 @@ enable_language(C ASM)
 include_directories($ENV{MSP430_INC}/include) # MSP430 headers
 add_compile_options(
     -std=c99
-    -mmcu=msp430fr5994
+    -mcpu=msp430
     -msmall
+    -mhwmult=none
     -fno-common
     -Wall
     )
@@ -22,14 +23,17 @@ set(CMAKE_EXE_LINKER_FLAGS
 
 # Add to search path for linker scripts (xx_symbols.ld, included by main linker script)
 link_directories(
-    ${CMAKE_SOURCE_DIR}/..
     $ENV{MSP430_INC}/include
-    $ENV{MSP430_GCC_ROOT}/lib/gcc/msp430-elf/7.3.1/
+    $ENV{MSP430_GCC_ROOT}/msp430-elf/lib/430/
+    $ENV{MSP430_GCC_ROOT}/lib/gcc/msp430-elf/7.3.1/430
     )
 
 link_libraries( # Global link flags
+    # Removing standard libs and startup code to prevent
+    # unnecessary initialization
     -nostartfiles
-    #-nodefaultlibs
-    #-lc
-    #-lgcc
+    -nodefaultlibs
     )
+
+# Utility for linking targets to std libs
+set(SUPPORT_LIBS ic c gcc mul_none)
