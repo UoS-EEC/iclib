@@ -81,6 +81,6 @@ void mm_restoreStatic(void);
  * @brief Save all modified pages to FRAM
  * @return number of bytes saved
  */
-unsigned mm_suspendStatic(void);
+unsigned mm_flush(void);
 
 #endif /* SRC_MEMORY_MANAGEMENT_H_ */

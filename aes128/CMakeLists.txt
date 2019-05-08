@@ -19,11 +19,10 @@ add_executable(
 
 add_msp_upload(${PROJECT_NAME})
 
-#target_link_libraries(${PROJECT_NAME}  ic c gcc mul_none)
 target_link_libraries(${PROJECT_NAME}  ${SUPPORT_LIBS})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES SUFFIX ".elf")
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${MSP430-SIZE} "$<TARGET_FILE:${PROJECT_NAME}>"
+    COMMAND ${MSP430-SIZE} -A -d "$<TARGET_FILE:${PROJECT_NAME}>"
     COMMENT "Invoking: msp430-elf-size")

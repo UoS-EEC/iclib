@@ -17,7 +17,7 @@ add_executable(
 
 add_msp_upload(${PROJECT_NAME})
 
-target_link_libraries(${PROJECT_NAME} ic mul_f5)
+target_link_libraries(${PROJECT_NAME} ${SUPPORT_LIBS})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES SUFFIX ".elf")
 

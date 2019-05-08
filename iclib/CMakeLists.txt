@@ -15,6 +15,7 @@ add_library(
   memory_management.c
   memory_management.h
   )
+
 target_link_libraries(
     ${CMAKE_PROJECT_NAME}
     STATIC
@@ -22,3 +23,7 @@ target_link_libraries(
     gcc
     c
     )
+
+add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
+    COMMAND ${MSP430-SIZE} -A -d "$<TARGET_FILE:${PROJECT_NAME}>"
+    COMMENT "Invoking: msp430-elf-size")

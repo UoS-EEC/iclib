@@ -109,8 +109,8 @@ int mm_acquire(const uint8_t *memPtr, mm_mode mode) {
     // Update suspend/restore thresholds
     static int oldPageTotal = 0;
     if (oldPageTotal != mm_n_dirty_pages + mm_n_active_pages) {
-        update_thresholds(mm_n_dirty_pages * PAGE_SIZE,
-                          mm_n_active_pages * PAGE_SIZE);
+        ic_update_thresholds(mm_n_dirty_pages * PAGE_SIZE,
+                             mm_n_active_pages * PAGE_SIZE);
         oldPageTotal = mm_n_dirty_pages + mm_n_active_pages;
     }
 
@@ -143,7 +143,7 @@ void mm_restoreStatic(void) {
     }
 }
 
-unsigned mm_suspendStatic(void) {
+unsigned mm_flush(void) {
     unsigned pagesSaved = 0;
 
     for (int pageNumber = 0; pageNumber < NPAGES; pageNumber++) {
@@ -158,8 +158,8 @@ unsigned mm_suspendStatic(void) {
         }
     }
 
-    update_thresholds(mm_n_dirty_pages * PAGE_SIZE,
-                      mm_n_active_pages * PAGE_SIZE);
+    ic_update_thresholds(mm_n_dirty_pages * PAGE_SIZE,
+                         mm_n_active_pages * PAGE_SIZE);
 
     return pagesSaved * PAGE_SIZE;
 }

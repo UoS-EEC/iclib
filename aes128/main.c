@@ -8,8 +8,8 @@
 
 #include "lipsum.h"  // Generated input string
 
-unsigned char key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-                       0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+static unsigned char key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+                              0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
 
 /* ------ Function Declarations ---------------------------------------------*/
 
@@ -17,6 +17,7 @@ int main(void) {
     WDTCTL = WDTPW | WDTHOLD;  // Stop watchdog timer
 
     while (1) {
+        P1OUT |= BIT2;
         // AES128 in Cipher Block Chaining mode
         uint8_t *prevBlock;
         uint8_t *ptr = input;
@@ -50,11 +51,11 @@ int main(void) {
         // Release last block
         mm_release_array(prevBlock, AES_BLOCK_SIZE);
 
-        // Toggle pin to show that computation has finished
-        P1OUT |= BIT3;
+        P1OUT &= ~BIT2;
+        mm_flush();
+
+        // Delay
         for (int i = 0; i < 100; i++)
             ;
-
-        P1OUT &= ~BIT3;
     }
 }

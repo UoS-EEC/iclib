@@ -1,3 +1,4 @@
+#include <ic.h>
 #include <msp430fr5994.h>
 
 int main(int argc, char* argv[]) {

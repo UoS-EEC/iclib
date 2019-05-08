@@ -22,7 +22,7 @@ void ic_init(void);
  * @param n_suspend
  * @param n_restore
  */
-void update_thresholds(uint16_t n_suspend, uint16_t n_restore);
+void ic_update_thresholds(uint16_t n_suspend, uint16_t n_restore);
 
 #endif /* IC_SRC */
 

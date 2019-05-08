@@ -6,8 +6,13 @@ project(blink)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+include_directories(${ICLIB_ROOT})
+link_directories(${ICLIB_ROOT})
+
 add_executable(${PROJECT_NAME} blink.c)
 add_msp_upload(${PROJECT_NAME})
+
+target_link_libraries(${PROJECT_NAME} ic mul_none gcc c)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES SUFFIX ".elf")
 

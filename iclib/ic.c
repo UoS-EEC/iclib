@@ -17,8 +17,8 @@ extern uint8_t __npdata_loadLow, __npdata_low, __npdata_high;
 #define PERSISTENT __attribute__((section(".fram_vars")))
 
 // Restore/suspend thresholds
-uint16_t restore_thr PERSISTENT = 2764;  // 2.7 V initial value
-uint16_t suspend_thr PERSISTENT = 2355;  // 2.3 V initial value
+uint16_t restore_thr PERSISTENT = 2764 >> 2;  // 2.7 V initial value
+uint16_t suspend_thr PERSISTENT = 2355 >> 2;  // 2.3 V initial value
 
 // Snapshots
 uint16_t register_snapshot[15] PERSISTENT;
@@ -44,7 +44,7 @@ extern void restore_registers(uint16_t *regSnapshot);
 
 /* ------ Function Declarations ---------------------------------------------*/
 
-void __attribute__((interrupt(RESET_VECTOR), naked)) iclib_boot() {
+void __attribute__((interrupt(RESET_VECTOR), naked, used)) iclib_boot() {
     __set_SP_register(&__boot_stack_high);  // Boot stack
 
     WDTCTL = WDTPW | WDTHOLD;  // Stop watchdog timer
@@ -55,7 +55,7 @@ void __attribute__((interrupt(RESET_VECTOR), naked)) iclib_boot() {
     memcpy(&__npdata_low, &__npdata_loadLow, &__npdata_high - &__npdata_low);
     clock_init();
     gpio_init();
-    adc_init();
+    // adc_init();
 
     __bis_SR_register(LPM4_bits + GIE);  // Enter LPM4 with interrupts enabled
     // Processor sleeps
@@ -70,11 +70,10 @@ void __attribute__((interrupt(RESET_VECTOR), naked)) iclib_boot() {
 
 #ifndef TRACK_MMDATA
     uint16_t mmdata_size = &__mmdata_end - &__mmdata_start;
-    update_thresholds(mmdata_size, mmdata_size);
+    ic_update_thresholds(mmdata_size, mmdata_size);
 #endif
 
-    P6OUT |= BIT0;  // Indicate active
-    int main();     // Suppress implicit decl. warning
+    int main();  // Suppress implicit decl. warning
     main();
 }
 
@@ -88,12 +87,17 @@ static void gpio_init(void) {
     P3DIR = 0xff;
     P4OUT = BIT0;  // Pull-up on board
     P4DIR = 0xff;
-    P6OUT = 0;
-    P6DIR = 0xff;
     P7OUT = 0;
     P7DIR = 0xff;
     P8OUT = 0;
     P8DIR = 0xff;
+
+    /* Keep-alive signal to external comparator */
+    // P6OUT = BIT0;     // resistor enable
+    // P6REN = BIT0;     // Pull-up mode
+    // P6DIR = ~(BIT0);  // All but 0 to output
+    P6OUT = BIT0;
+    P6DIR = 0xff;
 
     /* Interrupts from S1 and S2 buttons and P5.7 pin*/
     P5OUT = BIT5 | BIT6;            // Pull-up resistor
@@ -102,8 +106,8 @@ static void gpio_init(void) {
     P5IES = BIT5 | BIT6;            // Falling edge
     P5SEL0 = 0;
     P5SEL1 = 0;
-    P5IFG = 0;  // Clear pending interrupts
-    // P5IE = BIT5 | BIT7;  // Enable restore irq
+    P5IFG = 0;           // Clear pending interrupts
+    P5IE = BIT5 | BIT7;  // Enable restore irq
 
     // Disable GPIO power-on default high-impedance mode
     PM5CTL0 &= ~LOCKLPM5;
@@ -132,7 +136,7 @@ void suspendVM(void) {
     // mmdata
 #ifdef TRACK_MMDATA
     // Save modified pages
-    nBytesToSave = mm_suspendStatic();
+    nBytesToSave = mm_flush();
 #else
     // Save entire section
     src = &__mmdata_start;
@@ -223,13 +227,19 @@ void restore(void) {
 static void adc_init(void) {
     /*
      * ADC12 Configuration
-     * tSample = 16ADC12CLK, tConvert = 14 ADC12CLK cycles
-     * Clock: 75kHz
+     *  sample and hold time  = 4 cycles
+     *  convert time  = 10 cycles
+     *  tot cycles = 15
+     *  Clock: 75kHz
+     *  ==> Sample rate = 5kHz
      */
 
-    ADC12CTL0 = ADC12SHT0_2 |  // 12 Cycles sample time
-                ADC12MSC |     // Continuous mode
-                ADC12ON;
+    ADC12CTL0 &= ~ADC12ENC;  // Stop conversion
+    ADC12CTL0 &= ~ADC12ON;   // Turn off
+    __no_operation();        // Delay (just in case)
+
+    ADC12CTL0 = ADC12SHT0_0 |  // 4 Cycles sample time
+                ADC12MSC;      // Continuous mode
 
     ADC12CTL1 = ADC12SSEL_0 |    // MODCLK (4.8 MHz)
                 ADC12PDIV_3 |    // MODCLK/64 = 75kHz Clock
@@ -238,14 +248,15 @@ static void adc_init(void) {
                 ADC12SHP_1;      // Automatically trigger conv. after sample
 
     ADC12CTL2 = ADC12PWRMD_1 |  // Low-power mode
-                ADC12RES_2 |    // 8-bit resolution
+                ADC12RES_1 |    // 10-bit resolution
                 ADC12DF_0;      // Binary unsigned output
 
     ADC12CTL3 = ADC12BATMAP_1;  // 1/2AVcc channel selected for ADC ch A31
 
-    ADC12MCTL0 = ADC12INCH_31 |  // Vcc
-                 ADC12VRSEL_1 |  // Measure V between Vcc and GND
-                 ADC12WINC_1;    // Comparator window enable
+    ADC12MCTL0 =
+        ADC12INCH_31 |  // Vcc
+        ADC12VRSEL_1 |  // High reference = REF (2.0V), low reference = AVCC
+        ADC12WINC_1;    // Comparator window enable
 
     // Interrupts
     ADC12HI = restore_thr;
@@ -259,7 +270,11 @@ static void adc_init(void) {
     while (!(REFCTL0 & REFGENRDY))
         ;
 
-    ADC12CTL0 |= ADC12ENC | ADC12SC;  // Enable & start conversion
+    ADC12CTL0 |= ADC12ON;  // Turn on ADC
+
+    while (ADC12CTL1 & ADC12BUSY)
+        ;
+    ADC12CTL0 |= (ADC12SC | ADC12ENC);  // Enable & start conversion
 }
 
 void __attribute__((__interrupt__(ADC12_B_VECTOR))) adc12_isr(void) {
@@ -275,40 +290,46 @@ void __attribute__((__interrupt__(ADC12_B_VECTOR))) adc12_isr(void) {
 
             if (needRestore) {
                 if (snapshotValid) {  // Restore from snapshot
-                    P1OUT |= BIT2;    // dbg
+                    needRestore = 0;
                     __set_SP_register(&__boot_stack_high);  // Boot stack
-                    restore();  // **Restore returns to line after suspend()**
+                    P1OUT |= BIT3;
+                    restore();  // **Restore returns to line after
+                                // suspend()**
                 } else {
                     // Boot in iclib_boot
                 }
-            } else {            // Survived power-outage, no need to restore
-                P6OUT |= BIT0;  // Indicate active
+            } else {  // Survived power-outage, no need to restore
             }
 
             __bic_SR_register_on_exit(LPM4_bits);  // Wake up on return
             break;
         case ADC12IV__ADC12LOIFG:  // Low Interrupt - Suspend
 
+            if (!(P5IN & BIT6)) {  // active low
+                P1OUT |= BIT5;     // Acknowledge
+            }
+
             // Disable low interrupt and enable high
             ADC12IER2 = ADC12HIIE;
 
             P1OUT |= BIT4;
-            //        P1OUT &= ~BIT5;
-            P6OUT &= ~BIT0;  // Indicate not active
             snapshotValid = 0;
             suspend(register_snapshot);
-            needRestore = 0;
+            P1OUT &= ~(BIT3 | BIT4);
 
             //!! Execution enters this line either:
             // 1. when returning from suspend(), 2. when returning from
             // restore()
-            P1OUT &= ~BIT4;
             if (suspending) {  // Returning from suspend(), go to sleep
-                snapshotValid = 1;
+                // Experiment: if P5.6 is low (button press), do full reset at
+                // next power cycle
+                snapshotValid = (P5IN & BIT6) ? 1 : 0;
+                P1OUT &= ~BIT5;
+                // P6REN &= ~BIT0;  // Disable pull-up
+                P6OUT &= ~BIT0;
+
                 __bis_SR_register_on_exit(LPM4_bits);  // Sleep on return
             } else {  // Returning from Restore(), continue execution
-                P1OUT &= ~(BIT2 | BIT4);
-                P6OUT |= BIT0;                         // Indicate active
                 __bic_SR_register_on_exit(LPM4_bits);  // Wake up on return
             }
             break;
@@ -354,7 +375,7 @@ void __attribute__((__interrupt__(PORT5_VECTOR))) port5_isr_handler(void) {
     __bis_SR_register_on_exit(GIE);
 }
 
-void update_thresholds(uint16_t n_suspend, uint16_t n_restore) {
+void ic_update_thresholds(uint16_t n_suspend, uint16_t n_restore) {
     static const uint32_t factor = DVDT;
     static uint16_t suspend_old = 0;
     static uint16_t restore_old = 0;
@@ -382,8 +403,8 @@ void update_thresholds(uint16_t n_suspend, uint16_t n_restore) {
             ;  // Error: No safe restore thr found
     }
 
-    restore_thr = (uint16_t)newVR;
-    suspend_thr = (uint16_t)newVS;
+    restore_thr = (uint16_t)newVR >> 2;
+    suspend_thr = (uint16_t)newVS >> 2;
 
     ADC12HI = restore_thr > VMAX ? VMAX : restore_thr;
     ADC12LO = suspend_thr;

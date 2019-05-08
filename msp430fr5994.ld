@@ -39,6 +39,9 @@ OUTPUT_ARCH(msp430)
 /* ENTRY(_start) */
 ENTRY(iclib_boot)
 
+__stack_size = 0x200;
+__boot_stack_size = 0x80;
+
 MEMORY {
   TINYRAM          : ORIGIN = 0xA, LENGTH = 0x0016
   BSL              : ORIGIN = 0x1000, LENGTH = 0x0800
@@ -348,7 +351,7 @@ PROVIDE(__npdata_loadHigh = LOADADDR(.npdata) + SIZEOF(.npdata));
 /* Boot stack */
 .boot_stack (NOLOAD) : {
   __boot_stack_low = .;
-  . += 0x80;
+  . += __boot_stack_size;
   __boot_stack_high = .;
 } > RAM
 
@@ -428,11 +431,12 @@ PROVIDE(__npdata_loadHigh = LOADADDR(.npdata) + SIZEOF(.npdata));
   /* WARNING: Do not place anything in RAM here.
      The heap section must be the last section in RAM and the stack
      section must be placed at the very end of the RAM region.  */
-  .stack (ORIGIN (RAM) + LENGTH(RAM)) :
+  .stack (ORIGIN (RAM) + LENGTH(RAM) - __stack_size) :
   {
     PROVIDE (__stack = .);
     PROVIDE (__stack_low = .);
     *(.stack)
+    . += __stack_size;
     PROVIDE (__STACK_END = .);
     PROVIDE (__stack_high = .);
   }

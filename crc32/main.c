@@ -12,12 +12,12 @@ int main(void) {
     WDTCTL = WDTPW | WDTHOLD;  // Stop watchdog timer
 
     while (1) {
+        P1OUT |= BIT2;
         uint32_t result __attribute__((unused)) =
             crc32buf(input, sizeof(input));
+        P1OUT &= ~BIT2;
         // Toggle pin to show that computation has finished
-        P1OUT |= BIT2;
         for (int i = 0; i < 100; i++) {
         }
-        P1OUT &= ~BIT2;
     }
 }

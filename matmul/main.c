@@ -35,11 +35,13 @@ int main(void) {
     WDTCTL = WDTPW | WDTHOLD;  // Stop watchdog timer
 
     while (1) {
-        matmult(MATSIZE, MATSIZE, a, b, output);
-        // Toggle pin to show that computation has finished
         P1OUT |= BIT2;
+        matmult(MATSIZE, MATSIZE, a, b, output);
+        P1OUT &= ~BIT2;
+        // Clear mmdata
+        mm_flush();
+        // Toggle pin to show that computation has finished
         for (int i = 0; i < 100; i++) {
         }
-        P1OUT &= ~BIT2;
     }
 }
