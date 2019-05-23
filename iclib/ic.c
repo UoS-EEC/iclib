@@ -73,8 +73,7 @@ void __attribute__((interrupt(RESET_VECTOR), naked)) iclib_boot(void) {
     update_thresholds(mmdata_size, mmdata_size);
 #endif
 
-    P6OUT |= BIT0;  // Indicate active
-    int main();     // Suppress implicit decl. warning
+    int main();  // Suppress implicit decl. warning
     main();
 }
 
@@ -143,8 +142,8 @@ void suspendVM(void) {
     nBytesToSave += len;
 
     // stack
-    // stack_low-----[SP-------stack_high]
 #ifdef TRACK_STACK
+    // stack_low-----[SP-------stack_high]
     src = (uint8_t *)register_snapshot[0];  // Saved SP
 #else
     src = &__stack_low;
@@ -199,7 +198,7 @@ void restore(void) {
     uint16_t offset =
         (uint16_t)((uint16_t *)dst - (uint16_t *)&__stack_low);  // word offset
     src = (uint8_t *)&stack_snapshot[offset];
-    memcpy(dst, src, len);  // Restore default stack
+    memcpy(dst, src, len);
 
     restore_registers(register_snapshot);  // Returns to line after suspend()
 }
@@ -262,14 +261,12 @@ void __attribute__((__interrupt__(ADC12_B_VECTOR))) adc12_isr(void) {
 
             if (needRestore) {
                 if (snapshotValid) {  // Restore from snapshot
-                    P1OUT |= BIT2;    // dbg
                     restore();  // **Restore returns to line after suspend()**
                 } else {
                     // Boot in iclib_boot
                 }
                 needRestore = 0;
-            } else {            // Survived power-outage, no need to restore
-                P6OUT |= BIT0;  // Indicate active
+            } else {  // Survived power-outage, no need to restore
             }
 
             __bic_SR_register_on_exit(LPM4_bits);  // Wake up on return
@@ -279,22 +276,16 @@ void __attribute__((__interrupt__(ADC12_B_VECTOR))) adc12_isr(void) {
             // Disable low interrupt and enable high
             ADC12IER2 = ADC12HIIE;
 
-            P1OUT |= BIT4;
-            //        P1OUT &= ~BIT5;
-            P6OUT &= ~BIT0;  // Indicate not active
             snapshotValid = 0;
             suspend(register_snapshot);
 
             //!! Execution enters this line either:
             // 1. when returning from suspend(), 2. when returning from
             // restore()
-            P1OUT &= ~BIT4;
             if (suspending) {  // Returning from suspend(), go to sleep
                 snapshotValid = 1;
                 __bis_SR_register_on_exit(LPM4_bits);  // Sleep on return
             } else {  // Returning from Restore(), continue execution
-                P1OUT &= ~(BIT2 | BIT4);
-                P6OUT |= BIT0;                         // Indicate active
                 __bic_SR_register_on_exit(LPM4_bits);  // Wake up on return
             }
             break;
@@ -307,6 +298,8 @@ void __attribute__((__interrupt__(ADC12_B_VECTOR))) adc12_isr(void) {
 }
 
 void update_thresholds(uint16_t n_suspend, uint16_t n_restore) {
+    // Note: this could/should be implemented as a look up table to improve
+    // performance
     static const uint32_t factor = DVDT;
     static uint16_t suspend_old = 0;
     static uint16_t restore_old = 0;
