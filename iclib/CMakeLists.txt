@@ -14,4 +14,14 @@ add_library(
   memory_management.c
   memory_management.h
   )
-set_property(SOURCE boot.S PROPERTY LANGUAGE C)
+
+target_link_libraries(
+    ${CMAKE_PROJECT_NAME}
+    mul_f5
+    gcc
+    c
+    )
+
+add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
+    COMMAND ${MSP430-SIZE} -A -d "$<TARGET_FILE:${PROJECT_NAME}>"
+    COMMENT "Invoking: msp430-elf-size")

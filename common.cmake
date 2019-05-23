@@ -13,7 +13,6 @@ add_compile_options(
     -mmcu=msp430fr5994
     -msmall
     -fno-common
-    #-ffunction-sections
     -Wall
     )
 
@@ -25,9 +24,16 @@ set(CMAKE_EXE_LINKER_FLAGS
 link_directories(
     ${CMAKE_SOURCE_DIR}/..
     $ENV{MSP430_INC}/include
+    $ENV{MSP430_GCC_ROOT}/msp430-elf/lib//
+    $ENV{MSP430_GCC_ROOT}/lib/gcc/msp430-elf/7.3.1/
     )
 
 link_libraries( # Global link flags
+    # Removing standard libs and startup code to prevent
+    # unnecessary initialization
     -nostartfiles
     -nodefaultlibs
     )
+
+# Utility variable for linking targets to std libs
+set(SUPPORT_LIBS ic mul_f5 gcc c)

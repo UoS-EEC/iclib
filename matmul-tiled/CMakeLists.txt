@@ -22,5 +22,5 @@ target_link_libraries(${PROJECT_NAME} ic mul_f5 gcc c)
 set_target_properties(${PROJECT_NAME} PROPERTIES SUFFIX ".elf")
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${MSP430-SIZE} "$<TARGET_FILE:${PROJECT_NAME}>"
+    COMMAND ${MSP430-SIZE} -A -d "$<TARGET_FILE:${PROJECT_NAME}>"
     COMMENT "Invoking: msp430-elf-size")
