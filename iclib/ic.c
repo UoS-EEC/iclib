@@ -44,7 +44,7 @@ extern void restore_registers(uint16_t *regSnapshot);
 
 /* ------ Function Declarations ---------------------------------------------*/
 
-void __attribute__((interrupt(RESET_VECTOR))) iclib_boot(void) {
+void __attribute__((interrupt(RESET_VECTOR), naked)) iclib_boot(void) {
     __set_SP_register(&__boot_stack_high);  // Boot stack
 
     needRestore = 1;  // Indicate powerup

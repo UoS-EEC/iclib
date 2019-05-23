@@ -1,5 +1,5 @@
 # paths
-set(ICLIB_ROOT "${CMAKE_SOURCE_DIR}/../iclib")
+set(ICLIB_ROOT "${CMAKE_CURRENT_LIST_DIR}/iclib")
 
 set(CMAKE_TOOLCHAIN_FILE
     ${CMAKE_CURRENT_LIST_DIR}/msp430-toolchain.cmake)
@@ -13,6 +13,7 @@ add_compile_options(
     -mmcu=msp430fr5994
     -msmall
     -fno-common
+    #-ffunction-sections
     -Wall
     )
 
@@ -24,12 +25,9 @@ set(CMAKE_EXE_LINKER_FLAGS
 link_directories(
     ${CMAKE_SOURCE_DIR}/..
     $ENV{MSP430_INC}/include
-    $ENV{MSP430_GCC_ROOT}/lib/gcc/msp430-elf/7.3.1/
     )
 
 link_libraries( # Global link flags
     -nostartfiles
-    #-nodefaultlibs
-    #-lc
-    #-lgcc
+    -nodefaultlibs
     )

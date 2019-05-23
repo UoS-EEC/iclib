@@ -14,3 +14,4 @@ add_library(
   memory_management.c
   memory_management.h
   )
+set_property(SOURCE boot.S PROPERTY LANGUAGE C)
