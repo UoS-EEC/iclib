@@ -11,7 +11,7 @@ ManagedState was presented in an academic paper,
 > Sivert T. Sliper, Domenico Balsamo, Nikos Nikoleris, William Wang, Alex S. Weddell and Geoff V. Merrett,<br />
 > IEEE Design Automation Conference (DAC 56), Las Vegas, 2019.<br />
 
-The paper is available at [DOI 10.1145/33167813317812](https://doi.org/10.1145/33167813317812), and the supporting dataset at [DOI 10.5258/SOTON/D0835](http://dx.doi.org/10.5258/SOTON/D0835).
+The paper is available at [DOI 10.1145/33167813317812](https://doi.org/10.1145/3316781.3317812), and the supporting dataset at [DOI 10.5258/SOTON/D0835](http://dx.doi.org/10.5258/SOTON/D0835).
 
 ## Setup
 
