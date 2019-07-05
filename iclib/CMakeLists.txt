@@ -18,11 +18,9 @@ add_library(
 
 target_link_libraries(
     ${CMAKE_PROJECT_NAME}
-    STATIC
     mul_none
-    gcc
     c
-    )
+    gcc)
 
 add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
     COMMAND ${MSP430-SIZE} -A -d "$<TARGET_FILE:${PROJECT_NAME}>"
