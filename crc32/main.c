@@ -16,8 +16,10 @@ int main(void) {
         uint32_t result __attribute__((unused)) =
             crc32buf(input, sizeof(input));
         P1OUT &= ~BIT2;
-        // Toggle pin to show that computation has finished
-        for (int i = 0; i < 100; i++) {
-        }
+        mm_flush();
+
+        // Delay
+        for (int i = 0; i < 100; i++)
+            ;
     }
 }

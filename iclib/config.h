@@ -2,7 +2,7 @@
 #define SRC_CONFIG_H_
 
 /* ------ Device settings ---------------------------------------------------*/
-#define FRAM_WAIT 15  // Number of wait states on FRAM cache miss (0-15)
+#define FRAM_WAIT 0  // Number of wait states on FRAM cache miss (0-15)
 
 /* ------ Suspend/Restore Mode ----------------------------------------------*/
 #define TRACK_MMDATA
@@ -25,8 +25,8 @@
 #define VON 2200   // On-voltage
 
 // DVDT: 1024 x voltage delta per byte saved/restored
-#define DVDT 300
+#define DVDT 60 * 5
 
-#define V_C 205  // 0.2 V Voltage buffer for useful compute
+#define V_C 300  // 205  // 0.2 V Voltage buffer for useful compute
 
 #endif /* SRC_CONFIG_H_ */

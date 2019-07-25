@@ -1,5 +1,4 @@
 #include <msp430fr5994.h>
-#include <string.h>
 
 #include "config.h"
 #include "ic.h"
@@ -17,8 +16,8 @@ extern uint8_t __npdata_loadLow, __npdata_low, __npdata_high;
 #define PERSISTENT __attribute__((section(".fram_vars")))
 
 // Restore/suspend thresholds
-uint16_t restore_thr PERSISTENT = 2764 >> 2;  // 2.7 V initial value
-uint16_t suspend_thr PERSISTENT = 2355 >> 2;  // 2.3 V initial value
+uint16_t restore_thr PERSISTENT = 2764;  // >> 2;  // 2.7 V initial value
+uint16_t suspend_thr PERSISTENT = 2355;  // >> 2;  // 2.3 V initial value
 
 // Snapshots
 uint16_t register_snapshot[15] PERSISTENT;
@@ -37,6 +36,7 @@ static void adc_init(void);
 static void gpio_init(void);
 static void clock_init(void);
 static void restore(void);
+static void fastmemcpy(uint8_t *dst, uint8_t *src, size_t len);
 
 /* ------ ASM functions ---------------------------------------------------- */
 extern void suspend(uint16_t *regSnapshot);
@@ -52,7 +52,8 @@ void __attribute__((interrupt(RESET_VECTOR), naked, used)) iclib_boot() {
     needRestore = 1;  // Indicate powerup
 
     // Initialise
-    memcpy(&__npdata_low, &__npdata_loadLow, &__npdata_high - &__npdata_low);
+    fastmemcpy(&__npdata_low, &__npdata_loadLow,
+               &__npdata_high - &__npdata_low);
     clock_init();
     gpio_init();
     // adc_init();
@@ -65,7 +66,7 @@ void __attribute__((interrupt(RESET_VECTOR), naked, used)) iclib_boot() {
     // boot!*
     //
     __set_SP_register(&__stack_high);  // Runtime stack
-    memcpy(&__data_low, &__data_loadLow, &__data_high - &__data_low);
+    fastmemcpy(&__data_low, &__data_loadLow, &__data_high - &__data_low);
     mm_init_lru();
 
 #ifndef TRACK_MMDATA
@@ -142,21 +143,21 @@ void suspendVM(void) {
     src = &__mmdata_start;
     dst = (uint8_t *)&__mmdata_loadStart;
     len = &__mmdata_end - src;
-    memcpy(dst, src, len);
+    fastmemcpy(dst, src, len);
 #endif
 
     // bss
     src = &__bss_low;
     dst = (uint8_t *)bss_snapshot;
     len = &__bss_high - src;
-    memcpy(dst, src, len);
+    fastmemcpy(dst, src, len);
     nBytesToSave += len;
 
     // data
     src = &__data_low;
     dst = (uint8_t *)data_snapshot;
     len = &__data_high - src;
-    memcpy(dst, src, len);
+    fastmemcpy(dst, src, len);
     nBytesToSave += len;
 
     // stack
@@ -169,7 +170,7 @@ void suspendVM(void) {
     len = &__stack_high - src;
     uint16_t offset = (uint16_t)(src - &__stack_low) / 2;  // word offset
     dst = (uint8_t *)&stack_snapshot[offset];
-    memcpy((void *)dst, (void *)src, len);
+    fastmemcpy((void *)dst, (void *)src, len);
     nBytesToSave += len;
 
     suspending = 1;
@@ -186,13 +187,13 @@ void restore(void) {
     dst = &__data_low;
     src = (uint8_t *)data_snapshot;
     len = &__data_high - dst;
-    memcpy(dst, src, len);
+    fastmemcpy(dst, src, len);
 
     // bss
     dst = &__bss_low;
     src = (uint8_t *)bss_snapshot;
     len = &__bss_high - dst;
-    memcpy(dst, src, len);
+    fastmemcpy(dst, src, len);
 
     // mmdata
 #ifdef TRACK_MMDATA
@@ -203,7 +204,7 @@ void restore(void) {
     dst = &__mmdata_start;
     len = &__mmdata_end - dst;
     src = (uint8_t *)&__mmdata_loadStart;
-    memcpy(dst, src, len);
+    fastmemcpy(dst, src, len);
 #endif
 
     // stack
@@ -216,7 +217,7 @@ void restore(void) {
     uint16_t offset =
         (uint16_t)((uint16_t *)dst - (uint16_t *)&__stack_low);  // word offset
     src = (uint8_t *)&stack_snapshot[offset];
-    memcpy(dst, src, len);  // Restore default stack
+    fastmemcpy(dst, src, len);  // Restore default stack
 
     restore_registers(register_snapshot);  // Returns to line after suspend()
 }
@@ -321,9 +322,7 @@ void __attribute__((__interrupt__(ADC12_B_VECTOR))) adc12_isr(void) {
             // 1. when returning from suspend(), 2. when returning from
             // restore()
             if (suspending) {  // Returning from suspend(), go to sleep
-                // Experiment: if P5.6 is low (button press), do full reset at
-                // next power cycle
-                snapshotValid = (P5IN & BIT6) ? 1 : 0;
+                snapshotValid = 1;
                 P1OUT &= ~BIT5;
                 // P6REN &= ~BIT0;  // Disable pull-up
                 P6OUT &= ~BIT0;
@@ -403,10 +402,32 @@ void ic_update_thresholds(uint16_t n_suspend, uint16_t n_restore) {
             ;  // Error: No safe restore thr found
     }
 
-    restore_thr = (uint16_t)newVR >> 2;
-    suspend_thr = (uint16_t)newVS >> 2;
+    restore_thr = (uint16_t)newVR;  // >> 2;
+    suspend_thr = (uint16_t)newVS;  // >> 2;
 
     ADC12HI = restore_thr > VMAX ? VMAX : restore_thr;
     ADC12LO = suspend_thr;
 }
 
+__attribute__((naked, section(CODE_SECTION))) void fastmemcpy(uint8_t *dst,
+                                                              uint8_t *src,
+                                                              size_t len) {
+    __asm__(
+        " push r5\n"
+        " mov #2, r5\n"    // r5 = word size
+        " xor r15, r15\n"  // Clear r15
+        " mov r14, r15\n"  // r15=len
+        " and #1, r15\n"   // r15 = len%2
+        " sub r15, r14\n"  // r14 = len - len%2
+        "loopmemcpy:  \n"
+        " mov.w @r13+, @r12\n"
+        " add r5, r12 \n"
+        " sub r5, r14 \n"
+        " jnz loopmemcpy \n"
+        " tst r15\n"
+        " jz return\n"
+        " mov.b @r13, @r12\n"  // move last byte
+        "return:\n"
+        " pop r5\n"
+        " ret\n");
+}
