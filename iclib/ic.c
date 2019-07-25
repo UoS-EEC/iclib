@@ -409,11 +409,11 @@ void ic_update_thresholds(uint16_t n_suspend, uint16_t n_restore) {
     ADC12LO = suspend_thr;
 }
 
-__attribute__((naked, section(CODE_SECTION))) void fastmemcpy(uint8_t *dst,
-                                                              uint8_t *src,
-                                                              size_t len) {
+void __attribute__((naked)) fastmemcpy(uint8_t *dst, uint8_t *src, size_t len) {
     __asm__(
         " push r5\n"
+        " tst r14\n"  // Test for len=0
+        " jz return\n"
         " mov #2, r5\n"    // r5 = word size
         " xor r15, r15\n"  // Clear r15
         " mov r14, r15\n"  // r15=len
@@ -431,3 +431,4 @@ __attribute__((naked, section(CODE_SECTION))) void fastmemcpy(uint8_t *dst,
         " pop r5\n"
         " ret\n");
 }
+
