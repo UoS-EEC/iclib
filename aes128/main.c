@@ -55,7 +55,7 @@ int main(void) {
         mm_flush();
 
         // Delay
-        for (int i = 0; i < 100; i++)
+        for (volatile long int i = 0; i < (16 - FRAM_WAIT) * 10000; i++)
             ;
     }
 }

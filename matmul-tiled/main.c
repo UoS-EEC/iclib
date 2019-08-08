@@ -64,9 +64,9 @@ int main(void) {
         P1OUT |= BIT2;
         matmult(MATSIZE, MATSIZE, a, b, output);
         // Toggle pin to show that computation has finished
-        mm_flush();
         P1OUT &= ~BIT2;
-        for (int i = 0; i < 100; i++) {
+        mm_flush();
+        for (volatile long int i = 0; i < (16 - FRAM_WAIT) * 10000; i++) {
         }
     }
 }

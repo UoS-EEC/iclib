@@ -2,7 +2,9 @@
 #define SRC_CONFIG_H_
 
 /* ------ Device settings ---------------------------------------------------*/
-#define FRAM_WAIT 0  // Number of wait states on FRAM cache miss (0-15)
+#ifndef FRAM_WAIT
+#define FRAM_WAIT 15 // Number of wait states on FRAM cache miss (0-15)
+#endif
 
 /* ------ Suspend/Restore Mode ----------------------------------------------*/
 #define TRACK_MMDATA
@@ -18,15 +20,15 @@
 
 /* ------ Memory manager ----------------------------------------------------*/
 #define PAGE_SIZE 128u
-#define MAX_DIRTY_PAGES 16
+#define MAX_DIRTY_PAGES 10
 
 /* ------ Threshold Calculation ---------------------------------------------*/
-#define VMAX 3665  // 3.58 V maximum operating voltage
-#define VON 2200   // On-voltage
+#define VMAX 3665 // 3.58 V maximum operating voltage
+#define VON 2100  // On-voltage
 
 // DVDT: 1024 x voltage delta per byte saved/restored
 #define DVDT 60 * 5
 
-#define V_C 300  // 205  // 0.2 V Voltage buffer for useful compute
+#define V_C 205 // ~0.2 V Voltage buffer for useful compute
 
 #endif /* SRC_CONFIG_H_ */

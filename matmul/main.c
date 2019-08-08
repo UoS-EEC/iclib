@@ -41,7 +41,7 @@ int main(void) {
         // Clear mmdata
         mm_flush();
         // Toggle pin to show that computation has finished
-        for (int i = 0; i < 100; i++) {
+        for (volatile long int i = 0; i < (16 - FRAM_WAIT) * 10000; i++) {
         }
     }
 }
