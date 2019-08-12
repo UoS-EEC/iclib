@@ -12,12 +12,16 @@ extern uint8_t __mmdata_start, __mmdata_end, __mmdata_loadStart;
 extern uint8_t __boot_stack_high;
 extern uint8_t __npdata_loadLow, __npdata_low, __npdata_high;
 
+// ------------- Globals -------------------------------------------------------
+static stackTrunk = &__stack_low;
+
 // ------------- PERSISTENT VARIABLES ------------------------------------------
 #define PERSISTENT __attribute__((section(".fram_vars")))
 
 // Restore/suspend thresholds
-uint16_t restore_thr PERSISTENT = 2764; // >> 2;  // 2.7 V initial value
-uint16_t suspend_thr PERSISTENT = 2355; // >> 2;  // 2.3 V initial value
+uint16_t restore_thr PERSISTENT = 2764 >> 2; // 2.7 V initial value
+uint16_t suspend_thr PERSISTENT = 2355 >> 2; // 2.3 V initial
+                                             // value
 
 // Snapshots
 uint16_t register_snapshot[15] PERSISTENT;
@@ -46,10 +50,7 @@ extern void restore_registers(uint16_t *regSnapshot);
 
 void __attribute__((interrupt(RESET_VECTOR), naked, used)) iclib_boot() {
   __set_SP_register(&__boot_stack_high); // Boot stack
-
-  WDTCTL = WDTPW | WDTHOLD; // Stop watchdog timer
-
-  needRestore = 1; // Indicate powerup
+  WDTCTL = WDTPW | WDTHOLD;              // Stop watchdog timer
 
   // Initialise
   fastmemcpy(&__npdata_low, &__npdata_loadLow, &__npdata_high - &__npdata_low);
@@ -57,13 +58,15 @@ void __attribute__((interrupt(RESET_VECTOR), naked, used)) iclib_boot() {
   gpio_init();
   adc_init();
 
-  //__bis_SR_register(LPM4_bits + GIE);  // Enter LPM4 with interrupts enabled
+  needRestore = 1;                    // Indicate powerup
+  __bis_SR_register(LPM4_bits + GIE); // Enter LPM4 with interrupts enabled
   // Processor sleeps
   // ...
   // Processor wakes up after interrupt
   // *!Remaining code in this function is only executed during the first
   // boot!*
   //
+  // Boot: Set SP, load data and initialize LRU
   __set_SP_register(&__stack_high); // Runtime stack
   fastmemcpy(&__data_low, &__data_loadLow, &__data_high - &__data_low);
   mm_init_lru();
@@ -93,11 +96,11 @@ static void gpio_init(void) {
   P8DIR = 0xff;
 
   /* Keep-alive signal to external comparator */
-  // P6OUT = BIT0;     // resistor enable
-  // P6REN = BIT0;     // Pull-up mode
-  // P6DIR = ~(BIT0);  // All but 0 to output
-  P6OUT = BIT0;
-  P6DIR = 0xff;
+  P6OUT = BIT0;    // resistor enable
+  P6REN = BIT0;    // Pull-up mode
+  P6DIR = ~(BIT0); // All but 0 to output
+  // P6OUT = BIT0;
+  // P6DIR = 0xff;
 
   /* Interrupts from S1 and S2 buttons and P5.7 pin*/
   P5OUT = BIT5 | BIT6;           // Pull-up resistor
@@ -305,10 +308,6 @@ void __attribute__((__interrupt__(ADC12_B_VECTOR))) adc12_isr(void) {
     break;
   case ADC12IV__ADC12LOIFG: // Low Interrupt - Suspend
 
-    if (!(P5IN & BIT6)) { // active low
-      P1OUT |= BIT5;      // Acknowledge
-    }
-
     // Disable low interrupt and enable high
     ADC12IER2 = ADC12HIIE;
 
@@ -322,10 +321,9 @@ void __attribute__((__interrupt__(ADC12_B_VECTOR))) adc12_isr(void) {
     // restore()
     if (suspending) { // Returning from suspend(), go to sleep
       snapshotValid = 1;
-      P1OUT &= ~BIT5;
+      P1OUT &= ~BIT5; // Clear active
       // P6REN &= ~BIT0;  // Disable pull-up
-      P6OUT &= ~BIT0;
-
+      P6OUT &= ~BIT0;                       // De-assert keep-alive
       __bis_SR_register_on_exit(LPM4_bits); // Sleep on return
     } else { // Returning from Restore(), continue execution
       __bic_SR_register_on_exit(LPM4_bits); // Wake up on return
@@ -401,11 +399,45 @@ void ic_update_thresholds(uint16_t n_suspend, uint16_t n_restore) {
       ; // Error: No safe restore thr found
   }
 
-  restore_thr = (uint16_t)newVR; // >> 2;
-  suspend_thr = (uint16_t)newVS; // >> 2;
+  restore_thr = (uint16_t)newVR >> 2;
+  suspend_thr = (uint16_t)newVS >> 2;
 
   ADC12HI = restore_thr > VMAX ? VMAX : restore_thr;
   ADC12LO = suspend_thr;
+}
+
+void comparator_init() {
+  // Set up 3.0 as comparator input C12
+  // Should be tied to vcc/2 externally
+  // P3SEL1 = BIT0;
+  // P3SEL2 = BIT0;
+
+  // Set up voltage reference
+  // Configure internal reference
+  // while (REFCTL0 & REFGENBUSY)
+  //;
+  // REFCTL0 |= REFVSEL_0 | REFON; // Select internal ref = 1.2 V
+  // while (!(REFCTL0 & REFGENRDY))
+  //;
+  //
+  // Set up reference voltage generator (resistor ladder)
+  // CEREFLx = 0;
+  // CEON = 1;
+  // CERS = 0b01;
+  // CEREF0 = 0b01000;
+  // CEMRVS = 1;
+  // CEMRVL = 0;
+  // CECTL1 = CEMRVS_1 | CEMRVL_0 | CEON | CEPWRMD_2 | DEFDLY_1 | CEEX_0 |
+  // CESHORT_0 | CEIES_1 | CEF_1 | CEOUTPOL_0;
+  // uint8_t ladder_select = 0b01000;
+  // CECTL2 = CEREFL_1 | CERS_1 | CERSEL_1 | ladder_select;
+  //
+  //// Set up comparator
+  // CEPWRMD
+  // CEIMSEL = CESHORT = 0 CEEX = 0 CERSEL = 0 CEON = 1 CEF = 0 CEOUTPOL =
+  // 0 CEIFG = NEGEDGE;
+  //
+  // CEINT = CEIE;
 }
 
 void __attribute__((naked)) fastmemcpy(uint8_t *dst, uint8_t *src, size_t len) {
@@ -430,3 +462,12 @@ void __attribute__((naked)) fastmemcpy(uint8_t *dst, uint8_t *src, size_t len) {
           " ret\n");
 }
 
+void __attribute__((no_instrument_function))
+__cyg_profile_func_enter(void *this_fn, void *call_site) {}
+
+void __attribute__((no_instrument_function))
+__cyg_profile_func_exit(void *this_fn, void *call_site) {
+  if (__get_SP_register() < stackTrunk) {
+    stackTrunk = __get_SP_register();
+  }
+}
