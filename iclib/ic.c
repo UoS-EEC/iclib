@@ -1,5 +1,6 @@
 #include <msp430fr5994.h>
 
+#include "common.h"
 #include "config.h"
 #include "ic.h"
 #include "memory_management.h"
@@ -13,7 +14,7 @@ extern uint8_t __boot_stack_high;
 extern uint8_t __npdata_loadLow, __npdata_low, __npdata_high;
 
 // ------------- Globals -------------------------------------------------------
-static stackTrunk = &__stack_low;
+static uint16_t *stackTrunk = (uint16_t *)&__stack_low;
 
 // ------------- PERSISTENT VARIABLES ------------------------------------------
 #define PERSISTENT __attribute__((section(".fram_vars")))
@@ -40,7 +41,6 @@ static void adc_init(void);
 static void gpio_init(void);
 static void clock_init(void);
 static void restore(void);
-static void fastmemcpy(uint8_t *dst, uint8_t *src, size_t len);
 
 /* ------ ASM functions ---------------------------------------------------- */
 extern void suspend(uint16_t *regSnapshot);
@@ -48,7 +48,8 @@ extern void restore_registers(uint16_t *regSnapshot);
 
 /* ------ Function Declarations ---------------------------------------------*/
 
-void __attribute__((interrupt(RESET_VECTOR), naked, used)) iclib_boot() {
+void __attribute__((interrupt(RESET_VECTOR), naked, used, optimize("O0")))
+iclib_boot() {
   __set_SP_register(&__boot_stack_high); // Boot stack
   WDTCTL = WDTPW | WDTHOLD;              // Stop watchdog timer
 
@@ -66,14 +67,15 @@ void __attribute__((interrupt(RESET_VECTOR), naked, used)) iclib_boot() {
   // *!Remaining code in this function is only executed during the first
   // boot!*
   //
-  // Boot: Set SP, load data and initialize LRU
+  // First time boot: Set SP, load data and initialize LRU
   __set_SP_register(&__stack_high); // Runtime stack
   fastmemcpy(&__data_low, &__data_loadLow, &__data_high - &__data_low);
   mm_init_lru();
 
-#ifndef TRACK_MMDATA
+#ifdef ALLOCATEDSTATE
   uint16_t mmdata_size = &__mmdata_end - &__mmdata_start;
   ic_update_thresholds(mmdata_size, mmdata_size);
+  mm_restore();
 #endif
 
   int main(); // Suppress implicit decl. warning
@@ -137,15 +139,15 @@ void suspendVM(void) {
   size_t len;
 
   // mmdata
-#ifdef TRACK_MMDATA
-  // Save modified pages
-  nBytesToSave = mm_flush();
-#else
+#ifdef ALLOCATEDSTATE
   // Save entire section
   src = &__mmdata_start;
   dst = (uint8_t *)&__mmdata_loadStart;
   len = &__mmdata_end - src;
   fastmemcpy(dst, src, len);
+#else
+  // Save modified pages
+  nBytesToSave = mm_flush();
 #endif
 
   // bss
@@ -197,17 +199,8 @@ void restore(void) {
   len = &__bss_high - dst;
   fastmemcpy(dst, src, len);
 
-  // mmdata
-#ifdef TRACK_MMDATA
-  // Restore active pages only
-  mm_restoreStatic();
-#else
-  // Restore entire section
-  dst = &__mmdata_start;
-  len = &__mmdata_end - dst;
-  src = (uint8_t *)&__mmdata_loadStart;
-  fastmemcpy(dst, src, len);
-#endif
+  // Restore mmdata
+  mm_restore();
 
   // stack
 #ifdef TRACK_STACK
@@ -280,7 +273,8 @@ static void adc_init(void) {
   ADC12CTL0 |= (ADC12SC | ADC12ENC); // Enable & start conversion
 }
 
-void __attribute__((__interrupt__(ADC12_B_VECTOR))) adc12_isr(void) {
+void __attribute__((__interrupt__(ADC12_B_VECTOR), optimize("O0")))
+adc12_isr(void) {
   __disable_interrupt();
 
   switch (__even_in_range(ADC12IV, ADC12IV__ADC12RDYIFG)) {
@@ -440,34 +434,12 @@ void comparator_init() {
   // CEINT = CEIE;
 }
 
-void __attribute__((naked)) fastmemcpy(uint8_t *dst, uint8_t *src, size_t len) {
-  __asm__(" push r5\n"
-          " tst r14\n" // Test for len=0
-          " jz return\n"
-          " mov #2, r5\n"   // r5 = word size
-          " xor r15, r15\n" // Clear r15
-          " mov r14, r15\n" // r15=len
-          " and #1, r15\n"  // r15 = len%2
-          " sub r15, r14\n" // r14 = len - len%2
-          "loopmemcpy:  \n"
-          " mov.w @r13+, @r12\n"
-          " add r5, r12 \n"
-          " sub r5, r14 \n"
-          " jnz loopmemcpy \n"
-          " tst r15\n"
-          " jz return\n"
-          " mov.b @r13, @r12\n" // move last byte
-          "return:\n"
-          " pop r5\n"
-          " ret\n");
-}
-
 void __attribute__((no_instrument_function))
 __cyg_profile_func_enter(void *this_fn, void *call_site) {}
 
 void __attribute__((no_instrument_function))
 __cyg_profile_func_exit(void *this_fn, void *call_site) {
-  if (__get_SP_register() < stackTrunk) {
-    stackTrunk = __get_SP_register();
+  if ((uint16_t *)__get_SP_register() < stackTrunk) {
+    stackTrunk = (uint16_t *)_get_SP_register();
   }
 }

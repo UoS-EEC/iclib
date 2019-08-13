@@ -1,11 +1,13 @@
 cmake_minimum_required(VERSION 3.0)
 
 FOREACH(METHOD "MS" "AS")
-    set(TESTNAME "matmul-tiled-${METHOD}")
+    set(TESTNAME "aes-${METHOD}")
     add_executable(
         ${TESTNAME}
         main.c
-        input.h
+        TI_aes_128_encr_only.c
+        TI_aes_128_encr_only.h
+        lipsum.h
     )
     IF (${METHOD} STREQUAL "AS")
         target_compile_definitions( ${TESTNAME} PUBLIC -DALLOCATEDSTATE)
@@ -20,3 +22,5 @@ FOREACH(METHOD "MS" "AS")
         COMMAND ${MSP430-SIZE} -A -d "$<TARGET_FILE:${TESTNAME}>"
         COMMENT "Invoking: msp430-elf-size")
 ENDFOREACH()
+
+

@@ -24,11 +24,15 @@
 
 /* ------ Threshold Calculation ---------------------------------------------*/
 #define VMAX 3665 // 3.58 V maximum operating voltage
-#define VON 2048  // On-voltage
+#define VON 1945  // On-voltage
 
 // DVDT: 1024 x voltage delta per byte saved/restored
-#define DVDT (80 * 5) // 5
+#ifdef ALLOCATEDSTATE
+#define DVDT (33 * 5) //(33 * 5) // (60*5)
+#else
+#define DVDT (60 * 5) //(33 * 5) // (60*5)
+#endif
 
-#define V_C 205 // ~0.2 V Voltage buffer for useful compute
+#define V_C 102 // 205 // ~0.2 V Voltage buffer for useful compute
 
 #endif /* SRC_CONFIG_H_ */

@@ -2,26 +2,29 @@ cmake_minimum_required(VERSION 3.0)
 
 include(${CMAKE_CURRENT_LIST_DIR}/../common.cmake)
 
-project(ic)
+FOREACH(METHOD "MS" "AS")
+    set(TESTNAME "ic-${METHOD}")
+    add_library(
+      ${TESTNAME}
+      ic.c
+      ic.h
+      ic.S
+      memory_management.c
+      memory_management.h
+      common.c
+      common.h
+      )
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+    IF (${METHOD} STREQUAL "AS")
+       target_compile_definitions( ${TESTNAME} PUBLIC -DALLOCATEDSTATE)
+   ENDIF()
 
-add_library(
-  ${CMAKE_PROJECT_NAME}
-  STATIC
-  ic.c
-  ic.h
-  ic.S
-  memory_management.c
-  memory_management.h
-  )
+    target_link_libraries(${TESTNAME} ${SUPPORT_LIBS})
 
-target_link_libraries(
-    ${CMAKE_PROJECT_NAME}
-    mul_none
-    c
-    gcc)
+    target_include_directories(${TESTNAME}  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
-    COMMAND ${MSP430-SIZE} -A -d "$<TARGET_FILE:${PROJECT_NAME}>"
-    COMMENT "Invoking: msp430-elf-size")
+    add_custom_command(TARGET ${TESTNAME} POST_BUILD
+        COMMAND ${MSP430-SIZE} -A -d "$<TARGET_FILE:${TESTNAME}>"
+        COMMENT "Invoking: msp430-elf-size")
+
+ENDFOREACH()
