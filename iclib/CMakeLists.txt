@@ -4,6 +4,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/../common.cmake)
 
 FOREACH(METHOD "MS" "AS")
     set(TESTNAME "ic-${METHOD}")
+    set(DVDB_TABLE "dvdb-${METHOD}.h")
     add_library(
       ${TESTNAME}
       ic.c
@@ -13,6 +14,7 @@ FOREACH(METHOD "MS" "AS")
       memory_management.h
       common.c
       common.h
+      ${DVDB_TABLE}
       )
 
     IF (${METHOD} STREQUAL "AS")

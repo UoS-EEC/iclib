@@ -4,6 +4,11 @@
 #include "config.h"
 #include "ic.h"
 #include "memory_management.h"
+#ifdef ALLOCATEDSTATE
+#include "dvdb-AS.h"
+#else
+#include "dvdb-MS.h"
+#endif
 
 // ------------- CONSTANTS -----------------------------------------------------
 extern uint8_t __stack_low, __stack_high;
@@ -21,8 +26,7 @@ static uint16_t *stackTrunk = (uint16_t *)&__stack_low;
 
 // Restore/suspend thresholds
 uint16_t restore_thr PERSISTENT = 2764 >> 2; // 2.7 V initial value
-uint16_t suspend_thr PERSISTENT = 2355 >> 2; // 2.3 V initial
-                                             // value
+uint16_t suspend_thr PERSISTENT = 2355 >> 2; // 2.3 V initial value
 
 // Snapshots
 uint16_t register_snapshot[15] PERSISTENT;
@@ -366,38 +370,42 @@ void __attribute__((__interrupt__(PORT5_VECTOR))) port5_isr_handler(void) {
 }
 
 void ic_update_thresholds(uint16_t n_suspend, uint16_t n_restore) {
-  static const uint32_t factor = DVDT;
   static uint16_t suspend_old = 0;
   static uint16_t restore_old = 0;
+
+  uint16_t untracked =
+      (uint16_t)((&__data_high - &__data_low) + (&__bss_high - &__bss_low) +
+                 (&__stack_high - &__stack_low));
 
   if (n_suspend == suspend_old && n_restore == restore_old) {
     return; // No need for updates
   }
 
-  const uint16_t untracked =
-      (uint16_t)((&__data_high - &__data_low) + (&__bss_high - &__bss_low) +
-                 (&__stack_high - &__stack_low));
-
-  // newVS = (1024*V_ON + factor*bytes_to_save)/1024
-  uint32_t newVS = factor * (uint32_t)(untracked + n_suspend);
-  newVS >>= 10; // /1024
-  newVS += VON; // Offset (minimum voltage)
-
+  // newVS = V_ON + (factor*bytes_to_save)/1024
   // newVR = newVS + V_C + factor*bytes_to_restore/1024
-  uint32_t newVR = factor * (uint32_t)(untracked + n_restore);
-  newVR >>= 10;         // /1024
-  newVR += newVS + V_C; // hysteresis over suspend threshold
 
-  if (newVR > VMAX) {
+  /*
+  uint16_t newVS = (calculate_dvdb(untracked + n_suspend) + VON) >> 2;
+  uint16_t newVR = (calculate_dvdb(untracked + n_restore) + newVS + V_C) >> 2;
+  */
+
+  uint16_t newVS = vdrop[(untracked + n_suspend) >> 5] + (VON >> 2);
+  uint16_t newVR = vdrop[(untracked + n_restore) >> 5] + ((newVS + V_C) >> 2);
+
+  if (newVR > (VMAX >> 2)) {
     while (1)
       ; // Error: No safe restore thr found
   }
 
-  restore_thr = (uint16_t)newVR >> 2;
-  suspend_thr = (uint16_t)newVS >> 2;
+  restore_thr = newVR;
+  suspend_thr = newVS;
 
-  ADC12HI = restore_thr > VMAX ? VMAX : restore_thr;
-  ADC12LO = suspend_thr;
+  ADC12HI = newVR;
+  ADC12LO = newVS;
+}
+
+uint16_t calculate_dvdb(size_t nbytes) {
+  return (uint16_t)((DVDT * (uint32_t)nbytes) >> 10);
 }
 
 void comparator_init() {
