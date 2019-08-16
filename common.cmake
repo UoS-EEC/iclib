@@ -12,6 +12,7 @@ add_compile_options(
     -mhwmult=none
     -fno-common
     -Wall
+    -fno-zero-initialized-in-bss # We don't want to zero out whole bss on every boot
     )
 
 # Linker scripts

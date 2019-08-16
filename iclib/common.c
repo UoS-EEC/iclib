@@ -1,6 +1,7 @@
 #include "common.h"
 
-void __attribute__((naked)) fastmemcpy(uint8_t *dst, uint8_t *src, size_t len) {
+void __attribute__((section(".ramtext"), naked))
+fastmemcpy(uint8_t *dst, uint8_t *src, size_t len) {
   __asm__(" push r5\n"
           " tst r14\n" // Test for len=0
           " jz return\n"

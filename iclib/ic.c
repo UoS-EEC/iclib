@@ -54,8 +54,17 @@ extern void restore_registers(uint16_t *regSnapshot);
 
 void __attribute__((interrupt(RESET_VECTOR), naked, used, optimize("O0")))
 iclib_boot() {
-  __set_SP_register(&__boot_stack_high); // Boot stack
   WDTCTL = WDTPW | WDTHOLD;              // Stop watchdog timer
+  __set_SP_register(&__boot_stack_high); // Boot stack
+
+  // Boot functions that are mapped to ram (most importantly fastmemcpy)
+  extern uint8_t __ramtext_low, __ramtext_high, __ramtext_loadLow;
+  uint8_t *dst = &__ramtext_low;
+  uint8_t *src = &__ramtext_loadLow;
+  size_t len = &__ramtext_high - &__ramtext_low;
+  while (len--) {
+    *dst++ = *src++;
+  }
 
   // Initialise
   fastmemcpy(&__npdata_low, &__npdata_loadLow, &__npdata_high - &__npdata_low);
@@ -135,88 +144,52 @@ static void clock_init(void) {
   CSCTL3 = DIVA_0 + DIVS_1 + DIVM_1;
 }
 
-void suspendVM(void) {
-  unsigned nBytesToSave;
-
-  uint8_t *src;
-  uint8_t *dst;
-  size_t len;
-
+void __attribute__((optimize("O0"))) suspendVM(void) {
   // mmdata
 #ifdef ALLOCATEDSTATE
   // Save entire section
-  src = &__mmdata_start;
-  dst = (uint8_t *)&__mmdata_loadStart;
-  len = &__mmdata_end - src;
-  fastmemcpy(dst, src, len);
+  fastmemcpy(&__mmdata_loadStart, &__mmdata_start,
+             &__mmdata_end - &__mmdata_start);
 #else
   // Save modified pages
-  nBytesToSave = mm_flush();
+  mm_flush();
 #endif
 
   // bss
-  src = &__bss_low;
-  dst = (uint8_t *)bss_snapshot;
-  len = &__bss_high - src;
-  fastmemcpy(dst, src, len);
-  nBytesToSave += len;
+  fastmemcpy((uint8_t *)bss_snapshot, &__bss_low, &__bss_high - &__bss_low);
 
   // data
-  src = &__data_low;
-  dst = (uint8_t *)data_snapshot;
-  len = &__data_high - src;
-  fastmemcpy(dst, src, len);
-  nBytesToSave += len;
+  fastmemcpy((uint8_t *)data_snapshot, &__data_low, &__data_high - &__data_low);
 
   // stack
   // stack_low-----[SP-------stack_high]
-#ifdef TRACK_STACK
-  src = (uint8_t *)register_snapshot[0]; // Saved SP
-#else
-  src = &__stack_low;
-#endif
-  len = &__stack_high - src;
-  uint16_t offset = (uint16_t)(src - &__stack_low) / 2; // word offset
-  dst = (uint8_t *)&stack_snapshot[offset];
-  fastmemcpy((void *)dst, (void *)src, len);
-  nBytesToSave += len;
-
+  uint16_t offset =
+      (uint16_t)((uint8_t *)register_snapshot[0] - &__stack_low) / 2;
+  fastmemcpy((uint8_t *)&stack_snapshot[offset],
+             (uint8_t *)register_snapshot[0],
+             &__stack_high - (uint8_t *)register_snapshot[0]);
   suspending = 1;
 }
 
-void restore(void) {
-  uint8_t *src;
-  uint8_t *dst;
-  size_t len;
-
+void __attribute__((optimize("O0"))) restore(void) {
   suspending = 0;
 
   // data
-  dst = &__data_low;
-  src = (uint8_t *)data_snapshot;
-  len = &__data_high - dst;
-  fastmemcpy(dst, src, len);
+  fastmemcpy(&__data_low, (uint8_t *)data_snapshot, &__data_high - &__data_low);
 
   // bss
-  dst = &__bss_low;
-  src = (uint8_t *)bss_snapshot;
-  len = &__bss_high - dst;
-  fastmemcpy(dst, src, len);
+  fastmemcpy(&__bss_low, (uint8_t *)bss_snapshot, &__bss_high - &__bss_low);
 
   // Restore mmdata
   mm_restore();
 
-  // stack
-#ifdef TRACK_STACK
-  dst = (uint8_t *)register_snapshot[0]; // Saved stack pointer
-#else
-  dst = &__stack_low; // Save full stack
-#endif
-  len = &__stack_high - dst;
+  // stack -- restore from saved SP to stack_high
+  // stack_low-----[SP-------stack_high]
   uint16_t offset =
-      (uint16_t)((uint16_t *)dst - (uint16_t *)&__stack_low); // word offset
-  src = (uint8_t *)&stack_snapshot[offset];
-  fastmemcpy(dst, src, len); // Restore default stack
+      (uint16_t)((uint8_t *)register_snapshot[0] - &__stack_low) / 2;
+  fastmemcpy((uint8_t *)register_snapshot[0],
+             (uint8_t *)&stack_snapshot[offset],
+             &__stack_high - (uint8_t *)register_snapshot[0]);
 
   restore_registers(register_snapshot); // Returns to line after suspend()
 }
@@ -372,25 +345,31 @@ void __attribute__((__interrupt__(PORT5_VECTOR))) port5_isr_handler(void) {
 void ic_update_thresholds(uint16_t n_suspend, uint16_t n_restore) {
   static uint16_t suspend_old = 0;
   static uint16_t restore_old = 0;
+  static uint16_t untracked = 0;
 
-  uint16_t untracked =
-      (uint16_t)((&__data_high - &__data_low) + (&__bss_high - &__bss_low) +
-                 (&__stack_high - &__stack_low));
+  if (untracked == 0) { // Hack to calculate this once. Ideally should be a
+                        // const calculated by the compiler/preprocessor
+    untracked =
+        (uint16_t)((&__data_high - &__data_low) + (&__bss_high - &__bss_low) +
+                   (&__stack_high - &__stack_low));
+  }
 
   if (n_suspend == suspend_old && n_restore == restore_old) {
     return; // No need for updates
   }
 
+  // Formula:
   // newVS = V_ON + (factor*bytes_to_save)/1024
   // newVR = newVS + V_C + factor*bytes_to_restore/1024
 
   /*
+  If you don't want to use tables for vdrop
   uint16_t newVS = (calculate_dvdb(untracked + n_suspend) + VON) >> 2;
   uint16_t newVR = (calculate_dvdb(untracked + n_restore) + newVS + V_C) >> 2;
   */
 
   uint16_t newVS = vdrop[(untracked + n_suspend) >> 5] + (VON >> 2);
-  uint16_t newVR = vdrop[(untracked + n_restore) >> 5] + ((newVS + V_C) >> 2);
+  uint16_t newVR = vdrop[(untracked + n_restore) >> 5] + newVS + (V_C >> 2);
 
   if (newVR > (VMAX >> 2)) {
     while (1)

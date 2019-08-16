@@ -409,6 +409,18 @@ PROVIDE(__npdata_loadHigh = LOADADDR(.npdata) + SIZEOF(.npdata));
   } > FRAM2
   __high_bsssize = SIZEOF(.upper.bss);
 
+  .ramtext :
+  {
+    . = ALIGN(2);
+    PROVIDE (__ramtext_low = .);
+    *(.ramtext .ramtext.*)
+    . = ALIGN(2);
+    PROVIDE (__ramtext_high = .);
+  } > RAM AT> FRAM
+
+  PROVIDE(__ramtext_loadLow = LOADADDR(.ramtext));
+  PROVIDE(__ramtext_loadHigh = LOADADDR(.ramtext) + SIZEOF(.ramtext));
+
   /* We create this section so that "end" will always be in the
      RAM region (matching .stack below), even if the .bss
      section is empty.  */
