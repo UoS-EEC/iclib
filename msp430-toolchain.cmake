@@ -25,6 +25,7 @@ endif(NOT CMAKE_BUILD_TYPE)
 
 function(add_msp_upload EXECUTABLE)
   add_custom_target(upload_${EXECUTABLE}
+    COMMAND ${MSPDEBUG} tilib "erase"
     COMMAND ${MSPDEBUG} tilib "prog ${EXECUTABLE}.elf"
     DEPENDS ${EXECUTABLE})
 endfunction(add_msp_upload)

@@ -1,3 +1,4 @@
+#include "test-common.h"
 #include <ic.h>
 #include <memory_management.h>
 #include <msp430fr5994.h>
@@ -55,7 +56,6 @@ int main(void) {
     mm_flush();
 
     // Delay
-    for (volatile long int i = 0; i < (16 - FRAM_WAIT) * 10000l; i++)
-      ;
+    WAIT
   }
 }
