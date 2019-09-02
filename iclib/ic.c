@@ -292,8 +292,9 @@ adc12_isr(void) {
     // restore()
     if (suspending) { // Returning from suspend(), go to sleep
       snapshotValid = 1;
-      P1OUT &= ~BIT5; // Clear active
+      // P1OUT &= ~BIT5; // Clear active
       // P6REN &= ~BIT0;  // Disable pull-up
+      P1OUT = 0;                            // Clear IO
       P6OUT &= ~BIT0;                       // De-assert keep-alive
       __bis_SR_register_on_exit(LPM4_bits); // Sleep on return
     } else { // Returning from Restore(), continue execution
