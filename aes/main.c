@@ -15,8 +15,6 @@ static unsigned char key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 /* ------ Function Declarations ---------------------------------------------*/
 
 int main(void) {
-  WDTCTL = WDTPW | WDTHOLD; // Stop watchdog timer
-
   while (1) {
     P1OUT |= BIT2;
     // AES128 in Cipher Block Chaining mode
