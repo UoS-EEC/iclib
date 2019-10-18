@@ -1,15 +1,12 @@
 cmake_minimum_required(VERSION 3.0)
 
-FOREACH(METHOD "MS" "AS")
+FOREACH(METHOD "MS" "AS" "QR")
     set(TESTNAME "matmul-tiled-${METHOD}")
     add_executable(
         ${TESTNAME}
         main.c
         input.h
     )
-    IF (${METHOD} STREQUAL "AS")
-        target_compile_definitions( ${TESTNAME} PUBLIC -DALLOCATEDSTATE)
-    ENDIF()
     add_msp_upload(${TESTNAME})
     target_link_libraries(
         ${TESTNAME}

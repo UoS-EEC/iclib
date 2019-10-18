@@ -16,8 +16,13 @@ add_compile_options(
     )
 
 # Linker scripts
-set(CMAKE_EXE_LINKER_FLAGS
-    "${CMAKE_EXE_LINKER_FLAGS} -T ${CMAKE_CURRENT_SOURCE_DIR}/msp430fr5994.ld ")
+IF (QUICKRECALL)
+    set(LSCRIPTS "-T$ENV{MSP430_INC}/include/msp430fr5994_symbols.ld -T${CMAKE_SOURCE_DIR}/msp430fr5994-fram-only.ld ")
+ELSE()
+    set(LSCRIPTS "-T$ENV{MSP430_INC}/include/msp430fr5994_symbols.ld -T${CMAKE_SOURCE_DIR}/msp430fr5994.ld ")
+ENDIF ()
+
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LSCRIPTS}")
 
 # Add to search path for linker scripts (xx_symbols.ld, included by main linker script)
 link_directories(

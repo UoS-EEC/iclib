@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.0)
 
-include(${CMAKE_CURRENT_LIST_DIR}/../common.cmake)
-
-FOREACH(METHOD "MS" "AS")
+FOREACH(METHOD "MS" "AS" "QR")
+    string(COMPARE EQUAL ${METHOD} "QR" QUICKRECALL)
+    include(${CMAKE_CURRENT_LIST_DIR}/../common.cmake)
     set(TESTNAME "ic-${METHOD}")
-    set(DVDB_TABLE "dvdb-${METHOD}.h")
+
     add_library(
       ${TESTNAME}
       ic.c
@@ -14,12 +14,16 @@ FOREACH(METHOD "MS" "AS")
       memory_management.h
       common.c
       common.h
-      ${DVDB_TABLE}
+      dvdb.h
       )
 
     IF (${METHOD} STREQUAL "AS")
        target_compile_definitions( ${TESTNAME} PUBLIC -DALLOCATEDSTATE)
-   ENDIF()
+    ELSEIF(${METHOD} STREQUAL "MS")
+       target_compile_definitions(${TESTNAME} PUBLIC -DMANAGESTATE)
+    ELSEIF(${METHOD} STREQUAL "QS")
+       target_compile_definitions(${TESTNAME} PUBLIC -DQUICKRECALL)
+    ENDIF()
 
     target_link_libraries(${TESTNAME} ${SUPPORT_LIBS})
 

@@ -142,6 +142,7 @@ void mm_restore(void) {
 #ifdef ALLOCATEDSTATE
   fastmemcpy(&__mmdata_start, &__mmdata_loadStart,
              &__mmdata_end - &__mmdata_start);
+  return;
 #endif
 
   for (int pageNumber = 0; pageNumber < NPAGES; pageNumber++) {

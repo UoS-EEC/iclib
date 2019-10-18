@@ -79,11 +79,15 @@ iclib_boot() {
   // Processor wakes up after interrupt
   // *!Remaining code in this function is only executed during the first
   // boot!*
-  //
+
   // First time boot: Set SP, load data and initialize LRU
+
   __set_SP_register(&__stack_high); // Runtime stack
+
+#ifndef QUICKRECALL
   fastmemcpy(&__data_low, &__data_loadLow, &__data_high - &__data_low);
   mm_init_lru();
+#endif
 
 #ifdef ALLOCATEDSTATE
   uint16_t mmdata_size = &__mmdata_end - &__mmdata_start;
@@ -145,15 +149,14 @@ static void clock_init(void) {
 }
 
 void __attribute__((optimize("O0"))) suspendVM(void) {
-  // mmdata
-#ifdef ALLOCATEDSTATE
-  // Save entire section
-  fastmemcpy(&__mmdata_loadStart, &__mmdata_start,
-             &__mmdata_end - &__mmdata_start);
-#else
-  // Save modified pages
-  mm_flush();
+#ifdef QUICKRECALL
+  // All state is in FRAM
+  suspending = 1;
+  return;
 #endif
+
+  // Save mmdata
+  mm_flush();
 
   // bss
   fastmemcpy((uint8_t *)bss_snapshot, &__bss_low, &__bss_high - &__bss_low);
@@ -168,12 +171,14 @@ void __attribute__((optimize("O0"))) suspendVM(void) {
   fastmemcpy((uint8_t *)&stack_snapshot[offset],
              (uint8_t *)register_snapshot[0],
              &__stack_high - (uint8_t *)register_snapshot[0]);
+
   suspending = 1;
 }
 
 void __attribute__((optimize("O0"))) restore(void) {
   suspending = 0;
 
+#ifndef QUICKRECALL
   // data
   fastmemcpy(&__data_low, (uint8_t *)data_snapshot, &__data_high - &__data_low);
 
@@ -190,6 +195,7 @@ void __attribute__((optimize("O0"))) restore(void) {
   fastmemcpy((uint8_t *)register_snapshot[0],
              (uint8_t *)&stack_snapshot[offset],
              &__stack_high - (uint8_t *)register_snapshot[0]);
+#endif
 
   restore_registers(register_snapshot); // Returns to line after suspend()
 }
@@ -347,6 +353,12 @@ void ic_update_thresholds(uint16_t n_suspend, uint16_t n_restore) {
   static uint16_t suspend_old = 0;
   static uint16_t restore_old = 0;
   static uint16_t untracked = 0;
+
+#ifdef QUICKRECALL
+  ADC12HI = 2764 >> 2; // Fixed 2.7V restore threshold
+  ADC12LO = 2048 >> 2; // Fixed 2V suspend threshold
+  return;
+#endif
 
   if (untracked == 0) { // Hack to calculate this once. Ideally should be a
                         // const calculated by the compiler/preprocessor

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 
-FOREACH(METHOD "MS" "AS")
+FOREACH(METHOD "MS" "AS" "QR")
     set(TESTNAME "aes-${METHOD}")
     add_executable(
         ${TESTNAME}
@@ -9,9 +9,7 @@ FOREACH(METHOD "MS" "AS")
         TI_aes_128_encr_only.h
         lipsum.h
     )
-    IF (${METHOD} STREQUAL "AS")
-        target_compile_definitions( ${TESTNAME} PUBLIC -DALLOCATEDSTATE)
-    ENDIF()
+
     add_msp_upload(${TESTNAME})
     target_link_libraries(
         ${TESTNAME}
