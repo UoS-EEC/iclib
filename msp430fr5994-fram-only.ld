@@ -343,7 +343,7 @@ PROVIDE(__mmdata_loadEnd = LOADADDR(.mmdata) + SIZEOF(.mmdata));
   PROVIDE(__npdata_low = .);
   *(.npdata)
   PROVIDE(__npdata_high = .);
-} FRAM
+} > FRAM
 
 PROVIDE(__npdata_loadLow = LOADADDR(.npdata));
 PROVIDE(__npdata_loadHigh = LOADADDR(.npdata) + SIZEOF(.npdata));
@@ -441,9 +441,9 @@ PROVIDE(__npdata_loadHigh = LOADADDR(.npdata) + SIZEOF(.npdata));
     __HeapLimit = __heap_end__;
   } > FRAM
   /* WARNING: Do not place anything in RAM here.
-     The heap section must be the last section in RAM and the stack
-     section must be placed at the very end of the RAM region.  */
-  .stack (ORIGIN (RAM) + LENGTH(RAM) - __stack_size) :
+     The heap section must be the last section in FRAM and the stack
+     section must be placed at the very end of the FRAM region.  */
+  .stack (ORIGIN(FRAM) + LENGTH(FRAM) - __stack_size) :
   {
     PROVIDE (__stack = .);
     PROVIDE (__stack_low = .);

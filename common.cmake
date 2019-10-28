@@ -1,6 +1,3 @@
-# paths
-set(CMAKE_TOOLCHAIN_FILE ${CMAKE_CURRENT_SOURCE_DIR}/msp430-toolchain.cmake)
-
 # Force compiler detection so we can set up flags
 enable_language(C ASM)
 
@@ -16,11 +13,7 @@ add_compile_options(
     )
 
 # Linker scripts
-IF (QUICKRECALL)
-    set(LSCRIPTS "-T$ENV{MSP430_INC}/include/msp430fr5994_symbols.ld -T${CMAKE_SOURCE_DIR}/msp430fr5994-fram-only.ld ")
-ELSE()
-    set(LSCRIPTS "-T$ENV{MSP430_INC}/include/msp430fr5994_symbols.ld -T${CMAKE_SOURCE_DIR}/msp430fr5994.ld ")
-ENDIF ()
+set(LSCRIPTS "-T$ENV{MSP430_INC}/include/msp430fr5994_symbols.ld")
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LSCRIPTS}")
 

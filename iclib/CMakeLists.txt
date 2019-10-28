@@ -21,7 +21,7 @@ FOREACH(METHOD "MS" "AS" "QR")
        target_compile_definitions( ${TESTNAME} PUBLIC -DALLOCATEDSTATE)
     ELSEIF(${METHOD} STREQUAL "MS")
        target_compile_definitions(${TESTNAME} PUBLIC -DMANAGESTATE)
-    ELSEIF(${METHOD} STREQUAL "QS")
+    ELSEIF(${METHOD} STREQUAL "QR")
        target_compile_definitions(${TESTNAME} PUBLIC -DQUICKRECALL)
     ENDIF()
 
@@ -30,7 +30,7 @@ FOREACH(METHOD "MS" "AS" "QR")
     target_include_directories(${TESTNAME}  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
     add_custom_command(TARGET ${TESTNAME} POST_BUILD
-        COMMAND ${MSP430-SIZE} -A -d "$<TARGET_FILE:${TESTNAME}>"
+        COMMAND ${MSP430-SIZE} -A -x "$<TARGET_FILE:${TESTNAME}>"
         COMMENT "Invoking: msp430-elf-size")
 
 ENDFOREACH()

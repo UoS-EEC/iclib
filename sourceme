@@ -1,4 +1,5 @@
 # Utility aliases to build and run (simulate) MSP executables
 alias clean="rm -r build/*"
-alias comp='docker build -t msp-dev .; docker run -v $PWD:/opt/src -v $PWD/build:/opt/src/build -it msp-dev /bin/bash -c "cd /opt/src/build; cmake .. -GNinja -DCMAKE_BUILD_TYPE=Release; ninja;"'
+alias comp='docker run -v $PWD:/opt/src -v $PWD/build:/opt/src/build -it msp-dev /bin/bash -c "cd /opt/src/build; cmake .. -GNinja -DCMAKE_BUILD_TYPE=Release; ninja;"'
+alias compg='docker run -v $PWD:/opt/src -v $PWD/build:/opt/src/build -it msp-dev /bin/bash -c "cd /opt/src/build; cmake .. -GNinja -DCMAKE_BUILD_TYPE=Debug; ninja;"'
 alias runi="docker run -v $PWD:/opt/src -p 51000:51000 -it msp-dev /bin/bash"
