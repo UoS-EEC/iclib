@@ -56,7 +56,9 @@ void __attribute__((interrupt(RESET_VECTOR), naked, used, optimize("O0")))
 iclib_boot() {
   WDTCTL = WDTPW | WDTHOLD;              // Stop watchdog timer
   __set_SP_register(&__boot_stack_high); // Boot stack
+  __bic_SR_register(GIE);                // Disable interrupts during startup
 
+#ifndef QUICKRECALL
   // Boot functions that are mapped to ram (most importantly fastmemcpy)
   extern uint8_t __ramtext_low, __ramtext_high, __ramtext_loadLow;
   uint8_t *dst = &__ramtext_low;
@@ -65,9 +67,10 @@ iclib_boot() {
   while (len--) {
     *dst++ = *src++;
   }
-
-  // Initialise
+  // Load npdata
   fastmemcpy(&__npdata_low, &__npdata_loadLow, &__npdata_high - &__npdata_low);
+#endif
+
   clock_init();
   gpio_init();
   adc_init();

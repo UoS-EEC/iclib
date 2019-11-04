@@ -53,7 +53,7 @@ static uint8_t lruTable[MAX_DIRTY_PAGES];
 /*************************** Function definitions ****************************/
 
 int mm_acquire(const uint8_t *memPtr, mm_mode mode) {
-#ifdef ALLOCATEDSTATE
+#if defined(ALLOCATEDSTATE) || defined(QUICKRECALL)
   return 0;
 #endif
   if ((&__mmdata_start > (uint8_t *)memPtr) ||
@@ -121,7 +121,7 @@ int mm_acquire(const uint8_t *memPtr, mm_mode mode) {
 }
 
 int mm_release(const uint8_t *memPtr) {
-#ifdef ALLOCATEDSTATE
+#if defined(ALLOCATEDSTATE) || defined(QUICKRECALL)
   return 0;
 #endif
   uint16_t pageNumber =
@@ -139,7 +139,7 @@ int mm_release(const uint8_t *memPtr) {
 }
 
 void mm_restore(void) {
-#ifdef ALLOCATEDSTATE
+#if defined(ALLOCATEDSTATE) || defined(QUICKRECALL)
   fastmemcpy(&__mmdata_start, &__mmdata_loadStart,
              &__mmdata_end - &__mmdata_start);
   return;
@@ -156,7 +156,7 @@ void mm_restore(void) {
 }
 
 unsigned mm_flush(void) {
-#ifdef ALLOCATEDSTATE
+#if defined(ALLOCATEDSTATE) || defined(QUICKRECALL)
   // Save entire section
   fastmemcpy(&__mmdata_loadStart, &__mmdata_start,
              &__mmdata_end - &__mmdata_start);
@@ -220,7 +220,7 @@ static void writePageFRAM(uint8_t pageNumber) {
 }
 
 int mm_acquire_array(const uint8_t *memPtr, size_t len, mm_mode mode) {
-#ifdef ALLOCATEDSTATE
+#if defined(ALLOCATEDSTATE) || defined(QUICKRECALL)
   return 0;
 #endif
   int status = 0;
@@ -241,7 +241,7 @@ int mm_acquire_array(const uint8_t *memPtr, size_t len, mm_mode mode) {
 }
 
 int mm_release_array(const uint8_t *memPtr, size_t len) {
-#ifdef ALLOCATEDSTATE
+#if defined(ALLOCATEDSTATE) || defined(QUICKRECALL)
   return 0;
 #endif
   int status = 0;
@@ -283,7 +283,7 @@ size_t mm_get_n_dirty_pages(void) { return mm_n_dirty_pages; }
 
 int mm_acquire_page(const uint8_t *memPtr, size_t nElements, size_t elementSize,
                     mm_mode mode) {
-#ifdef ALLOCATEDSTATE
+#if defined(ALLOCATEDSTATE) || defined(QUICKRECALL)
   return nElements;
 #endif
   int bytesAcquired;
