@@ -25,4 +25,3 @@ void ic_init(void);
 void update_thresholds(uint16_t n_suspend, uint16_t n_restore);
 
 #endif /* IC_SRC */
-

@@ -13,7 +13,7 @@
 */
 
 #define UPDC32(octet, crc) \
-    (crc_32_tab[((crc) ^ ((BYTE)octet)) & 0xff] ^ ((crc) >> 8))
+  (crc_32_tab[((crc) ^ ((BYTE)octet)) & 0xff] ^ ((crc) >> 8))
 
 DWORD updateCRC32(unsigned char ch, DWORD crc);
 DWORD crc32buf(char *buf, size_t len);
