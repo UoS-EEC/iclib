@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include "common.h"
-#include "ic.h"
+#include "msp430_ic.h"
 #include "memory_management.h"
 
 /*************************** Global Definitions ******************************/

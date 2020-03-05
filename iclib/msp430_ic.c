@@ -2,7 +2,7 @@
 
 #include "common.h"
 #include "config.h"
-#include "ic.h"
+#include "msp430_ic.h"
 #include "memory_management.h"
 #ifdef ALLOCATEDSTATE
 #include "dvdb-AS.h"

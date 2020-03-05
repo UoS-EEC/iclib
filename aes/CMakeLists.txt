@@ -9,7 +9,7 @@ FOREACH(METHOD "MS" "AS" "QR")
         TI_aes_128_encr_only.h
         lipsum.h
     )
-    include(${CMAKE_CURRENT_LIST_DIR}/../tail.cmake)
+    include(${CMAKE_CURRENT_LIST_DIR}/../cmake/tail.cmake)
 ENDFOREACH()
 
 

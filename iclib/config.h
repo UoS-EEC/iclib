@@ -3,7 +3,7 @@
 
 /* ------ Device settings ---------------------------------------------------*/
 #ifndef FRAM_WAIT
-#define FRAM_WAIT 0 // Number of wait states on FRAM cache miss (0-15)
+#define FRAM_WAIT 0  // Number of wait states on FRAM cache miss (0-15)
 #endif
 
 /* ------ Suspend/Restore Mode ----------------------------------------------*/
@@ -23,16 +23,16 @@
 #define MAX_DIRTY_PAGES 20
 
 /* ------ Threshold Calculation ---------------------------------------------*/
-#define VMAX 3665 // 3.58 V maximum operating voltage
-#define VON 1945  // On-voltage
+#define VMAX 3665  // 3.58 V maximum operating voltage
+#define VON 1945   // On-voltage
 
 // DVDT: 1024 x voltage delta per byte saved/restored
 #ifdef ALLOCATEDSTATE
-#define DVDT (33 * 5) //(33 * 5) // (60*5)
+#define DVDT (33 * 5)  //(33 * 5) // (60*5)
 #else
-#define DVDT (60 * 5) //(33 * 5) // (60*5)
+#define DVDT (60 * 5)  //(33 * 5) // (60*5)
 #endif
 
-#define V_C 102 // 205 // ~0.2 V Voltage buffer for useful compute
+#define V_C 102  // 205 // ~0.2 V Voltage buffer for useful compute
 
 #endif /* SRC_CONFIG_H_ */
