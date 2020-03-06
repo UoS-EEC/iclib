@@ -1,8 +1,8 @@
 #include <stdint.h>
 #include <string.h>
+#include <fused.h>
 #include "support/cm0.h"
 #include "support/cm0-support.h"
-#include <fused.h>
 
 void indicate_begin() {
    SIMPLE_MONITOR = SIMPLE_MONITOR_INDICATE_BEGIN;
@@ -31,7 +31,7 @@ void fused_assert (bool c) {
 
 void target_init() { return; }
 
-// Boot function
+/*
 __attribute__((optimize(1), naked, used, section(".ftext"))) void _start() {
   // Boot data (if necessary)
   extern uint8_t __data_low, __data_high, __data_loadLow;
@@ -42,3 +42,4 @@ __attribute__((optimize(1), naked, used, section(".ftext"))) void _start() {
   int main();
   main();
 }
+*/

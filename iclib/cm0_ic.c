@@ -21,11 +21,10 @@ extern uint8_t __boot_stack_high;
 // ------------- Globals -------------------------------------------------------
 
 // ------------- PERSISTENT VARIABLES ------------------------------------------
-#define PERSISTENT __attribute__((section(".persistent")))
 
 // Snapshots
 uint32_t saved_stack_pointer PERSISTENT;
-uint32_t stack_snapshot[STACK_SIZE] PERSISTENT;
+uint32_t stack_snapshot[STACK_SIZE / sizeof(uint32_t)] PERSISTENT;
 
 int suspending PERSISTENT;        /*! Flag to determine whether returning from
                                  suspend() or restore() */

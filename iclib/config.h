@@ -13,7 +13,7 @@
 /* ------ Section sizes -----------------------------------------------------*/
 /* Allocates (plenty of) space for snapshot in FRAM. Note that these can be made
  * smaller for most apps*/
-#define STACK_SIZE 0x1000
+#define STACK_SIZE 0x400
 #define BSS_SIZE 0x1000
 #define DATA_SIZE 0x2000
 #define MMDATA_SIZE 0x2000

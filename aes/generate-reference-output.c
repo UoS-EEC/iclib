@@ -2,7 +2,6 @@
 
 #include <stdint.h>
 #include <stdio.h>
-
 #include "TI_aes_128_encr_only.h"
 
 #define MMDATA  // Empty macro

@@ -8,8 +8,6 @@
 #include "config.h"
 
 /***************** Macros (Inline Functions) Definitions *********************/
-// Utility to put variables in the mmdata section
-#define MMDATA __attribute__((section(".mmdata")))
 
 /************************** Constant Definitions *****************************/
 

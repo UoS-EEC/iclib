@@ -1,7 +1,12 @@
-#include "test-common.h"
-#include <ic.h>
-#include <memory_management.h>
+#include "support/test-common.h"
+
+#ifdef MSP430_ARCH
 #include <msp430fr5994.h>
+#include "iclib/msp430_ic.h"
+#include "iclib/memory_management.h"
+#elif defined(CM0_ARCH)
+#include "support/cm0-support.h"
+#endif
 
 /* Benchmark includes */
 #include "TI_aes_128_encr_only.h"
@@ -15,14 +20,15 @@ static unsigned char key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 /* ------ Function Declarations ---------------------------------------------*/
 
 int main(void) {
+  target_init();
   while (1) {
-    P1OUT |= BIT2;
+    indicate_begin();
     // AES128 in Cipher Block Chaining mode
     uint8_t *prevBlock;
     uint8_t *ptr = input;
 
     // Acquire and encrypt first block
-    mm_acquire_array(ptr, AES_BLOCK_SIZE, MM_READWRITE);
+    //mm_acquire_array(ptr, AES_BLOCK_SIZE, MM_READWRITE);
     aes_encrypt(ptr, key);
     prevBlock = ptr;
     ptr += AES_BLOCK_SIZE;
@@ -30,7 +36,7 @@ int main(void) {
     // Encrypt remaining blocks
     while (ptr < input + sizeof(input)) {
       // Acquire current block
-      mm_acquire_array(ptr, AES_BLOCK_SIZE, MM_READWRITE);
+      //mm_acquire_array(ptr, AES_BLOCK_SIZE, MM_READWRITE);
 
       // CBC - Cipher Block Chaining mode
       for (int i = 0; i < AES_BLOCK_SIZE; i++) {
@@ -38,7 +44,7 @@ int main(void) {
       }
 
       // Release previous block
-      mm_release_array(prevBlock, AES_BLOCK_SIZE);
+      //mm_release_array(prevBlock, AES_BLOCK_SIZE);
 
       // Encrypt current block
       aes_encrypt(ptr, key);
@@ -48,12 +54,12 @@ int main(void) {
     }
 
     // Release last block
-    mm_release_array(prevBlock, AES_BLOCK_SIZE);
+    //mm_release_array(prevBlock, AES_BLOCK_SIZE);
 
-    P1OUT &= ~BIT2;
-    mm_flush();
+    indicate_end();
+    //mm_flush();
 
     // Delay
-    WAIT
+    wait();
   }
 }

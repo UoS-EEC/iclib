@@ -3,14 +3,15 @@ EXTERN (__VECTOR_TRABLE)
 ENTRY(Reset_Handler)
 
 __stack_size = 0x200;
+__boot_stack_size = 0x40;
 
 MEMORY
 {
         /*rom (rwx) : ORIGIN = 0x08000000, LENGTH = 16K */
         /*ram (rwx) : ORIGIN = 0x20000000, LENGTH = 4K */
         /*invm (rx) : ORIGIN = 0x20000000, LENGTH = 8K */
-        rom (rx)   : ORIGIN = 0x08000000, LENGTH = 8K
-        nvram (rwx): ORIGIN = 0x20000000, LENGTH = 8K
+        rom (rx)   : ORIGIN = 0x08000000, LENGTH = 16K
+        nvram (rwx): ORIGIN = 0x20000000, LENGTH = 16K
         sram (rwx) : ORIGIN = 0x20000000 + 16K, LENGTH = 8K
 }
 
@@ -123,9 +124,9 @@ SECTIONS
 .boot_stack (NOLOAD) :
 {
   PROVIDE(__boot_stack_low = .);
-  . = ALIGN(4)
+  . = ALIGN(4);
   *(.stack)
-  . += 0x100;
+  . += __boot_stack_size;
   PROVIDE(__boot_stack_high = .);
 } > sram
 

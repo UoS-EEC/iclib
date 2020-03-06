@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "iclib/cm0_ic.h"
 
 uint8_t input[2048] MMDATA =
     "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo "

@@ -1,37 +1,38 @@
 cmake_minimum_required(VERSION 3.13)
 
 # Commmon function to add linker script and definitions for each target
-  message("Testname ${TESTNAME}")
 
-target_link_libraries(
-  ${TESTNAME}
-  LINK_PUBLIC ic-${TARGET_ARCH}-${METHOD}
+target_link_libraries( ${TESTNAME}
+  LINK_PUBLIC support-${TARGET_ARCH}
+  LINK_PUBLIC ic-${METHOD}-${TARGET_ARCH}
   ${SUPPORT_LIBS}
   )
 
-set_target_properties(${TESTNAME} PROPERTIES SUFFIX ".elf")
+IF(${METHOD} STREQUAL "QR")
+  target_compile_definitions( ${TESTNAME} PRIVATE -DQUICKRECALL)
+ELSEIF(${METHOD} STREQUAL "AS")
+  target_compile_definitions( ${TESTNAME} PRIVATE -DALLOCATEDSTATE)
+ELSEIF(${METHOD} STREQUAL "MS")
+  target_compile_definitions( ${TESTNAME} PRIVATE -DMANAGEDSTATE)
+ENDIF()
+
 
 IF(${TARGET_ARCH} STREQUAL "msp430")
-  #add_msp_upload(${TESTNAME})
+  target_compile_definitions( ${TESTNAME} PRIVATE -DMSP430_ARCH)
   IF (${METHOD} STREQUAL "QR")
-      target_link_options(
-          ${TESTNAME}
-          PRIVATE -T${CMAKE_CURRENT_LIST_DIR}/support/msp430fr5994-fram-only.ld
-          )
+      target_link_options( ${TESTNAME}
+          PRIVATE -T${CMAKE_CURRENT_LIST_DIR}/support/msp430fr5994-fram-only.ld)
   ELSE ()
-      target_link_options(
-          ${TESTNAME}
-          PRIVATE -T${CMAKE_CURRENT_LIST_DIR}/support/msp430fr5994.ld
-          )
+      target_link_options( ${TESTNAME}
+          PRIVATE -T${CMAKE_CURRENT_LIST_DIR}/support/msp430fr5994.ld)
   ENDIF()
-
 ELSEIF(${TARGET_ARCH} STREQUAL "cm0")
-  message("Testname ${TESTNAME}")
-  target_link_options(
-      ${TESTNAME}
-      PRIVATE -T${CMAKE_CURRENT_LIST_DIR}/support/cm0-FS.ld
-      )
+  target_compile_definitions( ${TESTNAME} PRIVATE -DCM0_ARCH)
+  target_link_options( ${TESTNAME}
+      PRIVATE -T${CMAKE_CURRENT_LIST_DIR}/../support/cm0-FS.ld)
 ENDIF()
+
+set_target_properties(${TESTNAME} PROPERTIES SUFFIX ".elf")
 
 # Emit map, listing and hex
 add_custom_command(TARGET ${TESTNAME} POST_BUILD

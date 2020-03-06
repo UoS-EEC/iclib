@@ -23,7 +23,7 @@ include_directories(cmsis)
 
 add_subdirectory(support)
 add_subdirectory(iclib)
-#add_subdirectory(aes)
+add_subdirectory(aes)
 #add_subdirectory(matmul)
 #add_subdirectory(matmul-tiled)
 #add_subdirectory(crc)

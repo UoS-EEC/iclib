@@ -120,7 +120,7 @@ void aes_encrypt(unsigned char *state, unsigned char *key)
 	buf3 = state[buf4+3]^buf2;     buf3=galois_mul2(buf3); state[buf4+3] = state[buf4+3] ^ buf3 ^ buf1;
 	}
     }
-	  
+
     //key schedule
     // compute the 16 next round key bytes
     key[0] = sbox[key[13]]^key[0]^rcon;
@@ -139,7 +139,3 @@ void aes_encrypt(unsigned char *state, unsigned char *key)
     state[i]=state[i] ^ key[i];
   }
 }
-
-
-
-

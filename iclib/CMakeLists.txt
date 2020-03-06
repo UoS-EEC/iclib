@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.0)
 FOREACH(METHOD "MS" "AS" "QR")
     string(COMPARE EQUAL ${METHOD} "QR" QUICKRECALL)
     include(${CMAKE_CURRENT_LIST_DIR}/../cmake/common.cmake)
-    set(TESTNAME "ic-${TARGET_ARCH}-${METHOD}")
+    set(TESTNAME "ic-${METHOD}-${TARGET_ARCH}")
 
     IF(${TARGET_ARCH} STREQUAL "cm0")
       add_library(
@@ -12,7 +12,7 @@ FOREACH(METHOD "MS" "AS" "QR")
         cm0_ic.h
         cm0_ic.S
         )
-      target_link_libraries(${TESTNAME} support)
+      target_link_libraries(${TESTNAME} support-${TARGET_ARCH})
     ELSEIF(${TARGET_ARCH} STREQUAL "msp430")
       add_library(
         ${TESTNAME}

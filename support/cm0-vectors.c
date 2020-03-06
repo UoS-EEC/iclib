@@ -24,6 +24,7 @@
 
 #include <fused.h>
 #include "support/cm0.h"
+#include "iclib/cm0_ic.h"
 
 /*----------------------------------------------------------------------------
   External References
