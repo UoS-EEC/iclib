@@ -3,7 +3,7 @@
 .text
 .thumb
 
-/* @function void suspend(uint32_t *saved_sp)
+/* @function void suspend(uint32_t *saved_sp, int * snapshotValid, uint8_t *stackSnapshot)
  * @brief pushes registers to stack, and saves stack pointer to savedSp, then
  *        sleeps.
  * Argument is in r0 by Arm procedure call standard
@@ -11,12 +11,46 @@
 .globl suspend
 .type suspend, %function
 suspend:
+    // Push core registers to stack
     push {r0-r7,lr}
-    mrs r1, apsr /*# should this be xpsr?*/
-    push {r1}
-    mov r1, sp
-    str r1, [r0, #0]
+    mov r3, r8
+    mov r4, r9
+    mov r5, r10
+    mov r6, r11
+    mov r7, r12
+    push {r3-r7}
+    mrs r4, apsr /*# should this be xpsr?*/
+    push {r4}
+
+    // Save stack pointer in NVM @r0
+    mov r7, sp
+    str r7, [r0]
+
+    // Save stack to NVM
+    ldr r4, =__boot_stack_high // Use different stack
+    mov sp, r4
+    push {r0-r3} // Safekeep function arguments
+    mov r1, r7     // src: stack (saved)
+    ldr r4, =__stack_high
+    sub r4, r4, r7 // len: r4 = stack_high - sp
+    ldr r5, =__stack_size
+    add r0, r2, r5 // dst: r5 = snapshotValid + (stack_size-len)
+    sub r0, r0, r4
+    mov r2, r4
+    bl memcpy
+    pop {r0-r3}
+
+    // Set flag & suspend execution
+    mov r4, #1
+    str r4, [r1] //Set snapshotValid
+    mov r4, #0
+    ldr r5, =0x4000030 // OUTPORT_OUT
+    str r4, [r5] //de-assert keepAlive
     wfe
+suspend_loop0:
+    nop
+    b suspend_loop0
+    nop
     bx lr
 
 /*
@@ -31,7 +65,10 @@ restore_registers:
     mov sp, r1
     pop {r1}
     msr apsr_nzcvq, r1
-    pop {r0}
-    mov lr, r0
-    pop {r0-r7}
-    bx lr
+    pop {r3-r7}
+    mov r8, r3
+    mov r9, r4
+    mov r10, r5
+    mov r11, r6
+    mov r12, r7
+    pop {r0-r7, pc}

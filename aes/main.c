@@ -57,6 +57,7 @@ int main(void) {
     //mm_release_array(prevBlock, AES_BLOCK_SIZE);
 
     indicate_end();
+    fused_end_simulation();
     //mm_flush();
 
     // Delay

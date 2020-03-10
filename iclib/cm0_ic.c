@@ -1,4 +1,5 @@
 #include "support/cm0.h"
+#include "fused.h"
 #include "cmsis/core_cm0.h"
 #include "iclib/config.h"
 #include "iclib/cm0_ic.h"
@@ -12,7 +13,7 @@
 #endif
 
 // ------------- CONSTANTS -----------------------------------------------------
-extern uint8_t __stack_low, __stack_high;
+extern uint8_t __stack_low, __stack_high, __stack_size;
 extern uint8_t __data_low, __data_high, __data_loadLow;
 extern uint8_t __mmdata_low, __mmdata_high, __mmdata_loadLow;
 extern uint8_t __boot_stack_high;
@@ -35,36 +36,33 @@ int needRestore PERSISTENT = 0;   /*! Flag: whether restore is needed i.e. high
 /* ------ Function Prototypes -----------------------------------------------*/
 
 /* ------ ASM functions ---------------------------------------------------- */
-extern void suspend(uint32_t *saved_sp);
+extern void suspend(uint32_t *saved_sp, int *snapshotValid, uint8_t *stackSnapshot);
 extern void restore_registers(uint32_t *saved_sp);
 
 /* ------ Function Declarations ---------------------------------------------*/
 
 void __attribute__((optimize(1))) _start() {
-#ifndef QUICKRECALL
-  // Load npdata (non-persistent data)
-  //memcpy(&__npdata_low, &__npdata_loadLow, &__npdata_high - &__npdata_low);
-#endif
-
+  OUTPORT = (1u << 0); // Set keep-alive high
   needRestore = 1;                    // Indicate powerup
-
-#ifndef QUICKRECALL
-  memcpy(&__data_low, &__data_loadLow, &__data_high - &__data_low);
-  //mm_init_lru();
-  //mm_restore();
-#endif
-
-#ifdef ALLOCATEDSTATE
+#if defined(ALLOCATEDSTATE) || defined(MANAGEDSTATE)
   //uint32_t mmdata_size = &__mmdata_end - &__mmdata_start;
   //ic_update_thresholds(mmdata_size, mmdata_size);
+  //mm_init_lru();
+  //mm_restore();
+  memcpy(&__data_low, &__data_loadLow, &__data_high - &__data_low);
   memcpy(&__mmdata_low, &__mmdata_loadLow, &__mmdata_high - &__mmdata_low);
 #endif
 
+  // Enable suspend interrupt
+  NVIC_SetPriority(0,0);
+  NVIC_EnableIRQ(0);
+
   if (snapshotValid){ // Restore stack from snapshot and continue execution
     // stack -- restore from saved SP to stack_high
-    for (uint32_t *i= (uint32_t *)saved_stack_pointer; i <= (uint32_t *)&__stack_high; i++) {
-      *i = stack_snapshot[i - (uint32_t*)&__stack_low];
-    }
+    uint32_t sp = saved_stack_pointer;
+    int len = &__stack_high - (uint8_t *)sp;
+    int src = (uint32_t)&stack_snapshot[0] + ((uint32_t)&__stack_size - len);
+    memcpy(sp, src, len);
     restore_registers(&saved_stack_pointer); // Returns to suspend()
   }
 
@@ -76,34 +74,15 @@ void __attribute__((optimize(1))) _start() {
   NVIC_SystemReset(); // Should never get here
 }
 
-void __attribute__((optimize("O1"))) suspendVM(void) {
-#ifdef QUICKRECALL
-  // All state is in NVM
+// Suspend interrupt
+void Interrupt0_Handler() {
+  snapshotValid = 0;
   suspending = 1;
-  return;
-#endif
-
-  // Save mmdata
+#if defined(ALLOCATEDSTATE) || defined (MANAGEDSTATE)
+  // Save data & mmdata
   //mm_flush();
   memcpy(&__mmdata_loadLow, &__mmdata_low, &__mmdata_high - &__mmdata_low);
-
-  // data
   memcpy(&__data_loadLow, &__data_low, &__data_high - &__data_low);
-
-  // stack
-  // stack_low-----[SP-------stack_high]
-  for (uint32_t *i= (uint32_t *)__get_MSP(); i <= (uint32_t *)&__stack_high; i++) {
-    stack_snapshot[i - (uint32_t*)&__stack_low] = *i;
-  }
-
-  suspending = 1;
-  suspend(&saved_stack_pointer);
-}
-
-// Suspend interrupt
-void Interrupt0Handler() {
-    snapshotValid = 0;
-    suspendVM();
-    needRestore = 0;
-    snapshotValid = 1;
+#endif
+  suspend(&saved_stack_pointer, &snapshotValid, &stack_snapshot);
 }

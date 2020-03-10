@@ -31,6 +31,7 @@ void fused_assert (bool c) {
 
 void target_init() { return; }
 
+
 /*
 __attribute__((optimize(1), naked, used, section(".ftext"))) void _start() {
   // Boot data (if necessary)

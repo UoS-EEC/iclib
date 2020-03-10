@@ -24,16 +24,12 @@
 
 #include <fused.h>
 #include "support/cm0.h"
-#include "iclib/cm0_ic.h"
+#include "support/cm0-support.h"
 
 /*----------------------------------------------------------------------------
   External References
  *----------------------------------------------------------------------------*/
-extern uint32_t __INITIAL_SP;
-extern uint32_t __stack_high;
 extern uint32_t __boot_stack_high;
-
-extern __NO_RETURN void __PROGRAM_START(void);
 extern __NO_RETURN void _start(void);
 
 /*----------------------------------------------------------------------------
@@ -80,7 +76,6 @@ void Interrupt7_Handler     (void) __attribute__ ((weak, alias("Default_Handler"
 void Interrupt8_Handler     (void) __attribute__ ((weak, alias("Default_Handler")));
 void Interrupt9_Handler     (void) __attribute__ ((weak, alias("Default_Handler")));
 
-
 /*----------------------------------------------------------------------------
   Exception / Interrupt Vector table
  *----------------------------------------------------------------------------*/
@@ -89,6 +84,7 @@ void Interrupt9_Handler     (void) __attribute__ ((weak, alias("Default_Handler"
 //#pragma GCC diagnostic push
 //#pragma GCC diagnostic ignored "-Wpedantic"
 //#endif
+
 
 extern VECTOR_TABLE_Type __VECTOR_TABLE[48];
 VECTOR_TABLE_Type __VECTOR_TABLE[48] __VECTOR_TABLE_ATTRIBUTE = {

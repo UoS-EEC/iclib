@@ -1,5 +1,5 @@
 EXTERN (_vectors)
-EXTERN (__VECTOR_TRABLE)
+EXTERN (__VECTOR_TABLE)
 ENTRY(Reset_Handler)
 
 __stack_size = 0x200;
@@ -108,6 +108,7 @@ SECTIONS
     . = ALIGN(4);
     PROVIDE(__mmdata_high = .);
   } > sram AT> nvram
+  _mmdata_loadaddr = LOADADDR(.mmdata);
   PROVIDE(__mmdata_loadLow = LOADADDR(.mmdata));
   PROVIDE(__mmdata_loadHigh = LOADADDR(.mmdata) + SIZEOF(.mmdata));
 
