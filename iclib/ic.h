@@ -10,4 +10,5 @@
 #include "iclib/msp430-ic.h"
 #elif defined(CM0_ARCH)
 #include "iclib/cm0-ic.h"
+#include "iclib/memory-management.h"
 #endif

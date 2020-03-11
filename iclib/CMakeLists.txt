@@ -18,6 +18,8 @@ FOREACH(METHOD "MS" "AS" "QR")
         cm0-ic.c
         cm0-ic.h
         cm0-ic.S
+        memory-management.c
+        memory-management.h
         )
       target_link_libraries(${TESTNAME} support-${TARGET_ARCH})
     ELSEIF(${TARGET_ARCH} STREQUAL "msp430")

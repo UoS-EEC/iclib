@@ -32,6 +32,7 @@
 #ifndef __CORE_CM0_H_GENERIC
 #define __CORE_CM0_H_GENERIC
 
+#include "support/cm0.h"
 #include <stdint.h>
 
 #ifdef __cplusplus

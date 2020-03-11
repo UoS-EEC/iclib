@@ -24,4 +24,10 @@ void fastmemcpy(uint8_t *dst, uint8_t *src, size_t len);
 // Delay between workload iterations
 void wait();
 
+// Enable interrupts
+void enable_interrupts();
+
+// Disable interrupts
+void disable_interrupts();
+
 #endif

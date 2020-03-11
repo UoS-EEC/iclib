@@ -8,8 +8,9 @@
 #include <string.h>
 #include "cmsis/core_cm0.h"
 #include "iclib/config.h"
-#include "iclib/cm0_ic.h"
-//#include "memory-management.h"
+#include "iclib/cm0-ic.h"
+#include "support/support.h"
+#include "memory-management.h"
 
 // ------------- CONSTANTS -----------------------------------------------------
 extern uint8_t __stack_low, __stack_high, __stack_size;
@@ -33,7 +34,6 @@ int snapshotValid PERSISTENT = 0; //! Flag: whether snapshot is valid
 
 /* ------ ASM functions ---------------------------------------------------- */
 extern void suspend_stack_and_regs(uint32_t *saved_sp, int *snapshotValid, uint8_t *stackSnapshot);
-extern void suspend_and_flush_cache(uint32_t *saved_sp, int *snapshotValid);
 extern void restore_registers(uint32_t *saved_sp);
 
 /* ------ Function Declarations ---------------------------------------------*/
@@ -86,8 +86,5 @@ void Interrupt0_Handler() {
 #elif defined (QUICKRECALL)
   // Save registers only
 #error("QUICKRECALL not implemented")
-#elif defined (CACHEDSTATE)
-  // Save registers & flush cache
-  suspend_and_flush_cache(&saved_stack_pointer, &snapshotValid);
 #endif
 }
