@@ -1,27 +1,38 @@
 cmake_minimum_required(VERSION 3.0)
 
-include(${CMAKE_CURRENT_LIST_DIR}/../common.cmake)
+FOREACH(METHOD "MS" "AS" "QR")
+    string(COMPARE EQUAL ${METHOD} "QR" QUICKRECALL)
+    include(${CMAKE_CURRENT_LIST_DIR}/../cmake/common.cmake)
+    set(TESTNAME "ic-${METHOD}-${TARGET_ARCH}")
 
-project(ic)
+    IF(${TARGET_ARCH} STREQUAL "cm0")
+      add_library(
+        ${TESTNAME}
+        cm0-ic.c
+        cm0-ic.h
+        cm0-ic.S
+        )
+      target_link_libraries(${TESTNAME} support-${TARGET_ARCH})
+    ELSEIF(${TARGET_ARCH} STREQUAL "msp430")
+      add_library(
+        ${TESTNAME}
+        msp430-ic.c
+        msp430-ic.h
+        msp430-ic.S
+        memory-management.c
+        memory-management.h
+        dvdb.h
+        )
+    ENDIF()
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+    IF (${METHOD} STREQUAL "AS")
+       target_compile_definitions( ${TESTNAME} PUBLIC -DALLOCATEDSTATE)
+    ELSEIF(${METHOD} STREQUAL "MS")
+       target_compile_definitions(${TESTNAME} PUBLIC -DMANAGESTATE)
+    ELSEIF(${METHOD} STREQUAL "QR")
+       target_compile_definitions(${TESTNAME} PUBLIC -DQUICKRECALL)
+    ENDIF()
 
-add_library(
-  ${CMAKE_PROJECT_NAME}
-  ic.c
-  ic.h
-  ic.S
-  memory_management.c
-  memory_management.h
-  )
-
-target_link_libraries(
-    ${CMAKE_PROJECT_NAME}
-    mul_f5
-    gcc
-    c
-    )
-
-add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
-    COMMAND ${MSP430-SIZE} -A -d "$<TARGET_FILE:${PROJECT_NAME}>"
-    COMMENT "Invoking: msp430-elf-size")
+    target_link_libraries(${TESTNAME} ${SUPPORT_LIBS})
+    target_include_directories(${TESTNAME}  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+ENDFOREACH()
