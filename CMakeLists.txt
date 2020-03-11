@@ -1,3 +1,10 @@
+#
+# Copyright (c) 2019-2020, University of Southampton and Contributors.
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+
 cmake_minimum_required(VERSION 3.2)
 
 IF(NOT DEFINED TARGET_ARCH)

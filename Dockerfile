@@ -1,3 +1,10 @@
+#
+# Copyright (c) 2019-2020, University of Southampton and Contributors.
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+
 # Stage 1: Install dependencies
 FROM ubuntu:bionic as msp-build
   RUN apt update && apt install -y ninja-build wget unzip vim

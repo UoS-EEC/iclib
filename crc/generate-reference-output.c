@@ -1,4 +1,9 @@
-/* Generate reference output from host machine */
+/*
+ * Copyright (c) 2018-2020, University of Southampton.
+ * All rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
 
 #include <stdint.h>
 #include <stdio.h>

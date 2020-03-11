@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2018-2020, University of Southampton.
+ * All rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
 #include <string.h>
 #include "cmsis/core_cm0.h"
 #include "iclib/config.h"
