@@ -14,6 +14,8 @@ ELSEIF(${METHOD} STREQUAL "AS")
   target_compile_definitions( ${TESTNAME} PRIVATE -DALLOCATEDSTATE)
 ELSEIF(${METHOD} STREQUAL "MS")
   target_compile_definitions( ${TESTNAME} PRIVATE -DMANAGEDSTATE)
+ELSEIF(${METHOD} STREQUAL "CS")
+  target_compile_definitions( ${TESTNAME} PRIVATE -DCACHEDSTATE)
 ENDIF()
 
 
@@ -28,8 +30,13 @@ IF(${TARGET_ARCH} STREQUAL "msp430")
   ENDIF()
 ELSEIF(${TARGET_ARCH} STREQUAL "cm0")
   target_compile_definitions( ${TESTNAME} PRIVATE -DCM0_ARCH)
+  IF(${METHOD} STREQUAL "CS")
+  target_link_options( ${TESTNAME}
+      PRIVATE -T${CMAKE_CURRENT_LIST_DIR}/../support/cm0-mram-only.ld)
+  ELSE()
   target_link_options( ${TESTNAME}
       PRIVATE -T${CMAKE_CURRENT_LIST_DIR}/../support/cm0-FS.ld)
+  ENDIF()
 ENDIF()
 
 set_target_properties(${TESTNAME} PROPERTIES SUFFIX ".elf")

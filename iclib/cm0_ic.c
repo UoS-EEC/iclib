@@ -26,24 +26,21 @@ extern uint8_t __boot_stack_high;
 // Snapshots
 uint32_t saved_stack_pointer PERSISTENT;
 uint32_t stack_snapshot[STACK_SIZE / sizeof(uint32_t)] PERSISTENT;
-
 int suspending PERSISTENT;        /*! Flag to determine whether returning from
                                  suspend() or restore() */
 int snapshotValid PERSISTENT = 0; //! Flag: whether snapshot is valid
-int needRestore PERSISTENT = 0;   /*! Flag: whether restore is needed i.e. high
-                                     when booting from a power outtage */
 
 /* ------ Function Prototypes -----------------------------------------------*/
 
 /* ------ ASM functions ---------------------------------------------------- */
-extern void suspend(uint32_t *saved_sp, int *snapshotValid, uint8_t *stackSnapshot);
+extern void suspend_stack_and_regs(uint32_t *saved_sp, int *snapshotValid, uint8_t *stackSnapshot);
+extern void suspend_and_flush_cache(uint32_t *saved_sp, int *snapshotValid);
 extern void restore_registers(uint32_t *saved_sp);
 
 /* ------ Function Declarations ---------------------------------------------*/
 
 void __attribute__((optimize(1))) _start() {
   OUTPORT = (1u << 0); // Set keep-alive high
-  needRestore = 1;                    // Indicate powerup
 #if defined(ALLOCATEDSTATE) || defined(MANAGEDSTATE)
   //uint32_t mmdata_size = &__mmdata_end - &__mmdata_start;
   //ic_update_thresholds(mmdata_size, mmdata_size);
@@ -58,11 +55,14 @@ void __attribute__((optimize(1))) _start() {
   NVIC_EnableIRQ(0);
 
   if (snapshotValid){ // Restore stack from snapshot and continue execution
-    // stack -- restore from saved SP to stack_high
+
+#if defined(ALLOCATEDSTATE) || defined(MANAGEDSTATE)
+    // Restore from saved SP to stack_high
     uint32_t sp = saved_stack_pointer;
     int len = &__stack_high - (uint8_t *)sp;
     int src = (uint32_t)&stack_snapshot[0] + ((uint32_t)&__stack_size - len);
     memcpy(sp, src, len);
+#endif
     restore_registers(&saved_stack_pointer); // Returns to suspend()
   }
 
@@ -79,10 +79,16 @@ void Interrupt0_Handler() {
   snapshotValid = 0;
   suspending = 1;
 #if defined(ALLOCATEDSTATE) || defined (MANAGEDSTATE)
-  // Save data & mmdata
+  // Save data, mmdata & stack
   //mm_flush();
   memcpy(&__mmdata_loadLow, &__mmdata_low, &__mmdata_high - &__mmdata_low);
   memcpy(&__data_loadLow, &__data_low, &__data_high - &__data_low);
+  suspend_stack_and_regs(&saved_stack_pointer, &snapshotValid, &stack_snapshot);
+#elif defined (QUICKRECALL)
+  // Save registers only
+#error("QUICKRECALL not implemented")
+#elif defined (CACHEDSTATE)
+  // Save registers & flush cache
+  suspend_and_flush_cache(&saved_stack_pointer, &snapshotValid);
 #endif
-  suspend(&saved_stack_pointer, &snapshotValid, &stack_snapshot);
 }

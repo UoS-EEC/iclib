@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 
-FOREACH(METHOD "MS" "AS" "QR")
+FOREACH(METHOD "MS" "AS" "QR" "CS")
     string(COMPARE EQUAL ${METHOD} "QR" QUICKRECALL)
     include(${CMAKE_CURRENT_LIST_DIR}/../cmake/common.cmake)
     set(TESTNAME "ic-${METHOD}-${TARGET_ARCH}")
@@ -33,6 +33,8 @@ FOREACH(METHOD "MS" "AS" "QR")
        target_compile_definitions(${TESTNAME} PUBLIC -DMANAGESTATE)
     ELSEIF(${METHOD} STREQUAL "QR")
        target_compile_definitions(${TESTNAME} PUBLIC -DQUICKRECALL)
+     ELSEIF(${METHOD} STREQUAL "CS")
+       target_compile_definitions(${TESTNAME} PUBLIC -DCACHEDSTATE)
     ENDIF()
 
     target_link_libraries(${TESTNAME} ${SUPPORT_LIBS})
