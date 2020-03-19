@@ -13,7 +13,19 @@
 #include <stdio.h>
 #include "lib/iclib/config.h"
 
-/***************** Macros (Inline Functions) Definitions *********************/
+/***************** Typedefs **************************************************/
+
+#ifdef MSP430_ARCH
+typedef uint16_t addr_t;
+typedef uint16_t word_t;
+typedef uint16_t *wordptr_t;
+#elif defined(CM0_ARCH) || defined(TRIFFID_ARCH)
+typedef uint32_t addr_t;
+typedef uint32_t word_t;
+typedef uint32_t *wordptr_t;
+#else
+#error "Target architecture undefined or invalid"
+#endif
 
 /************************** Constant Definitions *****************************/
 
@@ -27,7 +39,7 @@ typedef enum { MM_READONLY, MM_READWRITE } mm_mode;
  * @param Pointer to variable held in static memory
  * @param mm_mode access mode
  */
-int mm_acquire(const uint8_t *memPtr, mm_mode mode);
+int mm_acquire(const uint8_t *memPtr, const mm_mode mode);
 
 /**
  * @brief Release a byte from managed memory.
@@ -43,7 +55,7 @@ int mm_release(const uint8_t *memPtr);
  * @param mm_mode access mode
  * @return
  */
-int mm_acquire_array(const uint8_t *memPtr, size_t len, mm_mode mode);
+int mm_acquire_array(const uint8_t *memPtr, const int len, const mm_mode mode);
 
 /**
  * @brief Release array
@@ -51,7 +63,7 @@ int mm_acquire_array(const uint8_t *memPtr, size_t len, mm_mode mode);
  * @param len size of array
  * @return
  */
-int mm_release_array(const uint8_t *memPtr, size_t len);
+int mm_release_array(const uint8_t *memPtr, const int len);
 
 /**
  * @brief Aquire data from an array one page at a time. May load two pages if
@@ -61,19 +73,19 @@ int mm_release_array(const uint8_t *memPtr, size_t len);
  * @param mm_mode access mode
  * @return Number of elements acquired.
  */
-int mm_acquire_page(const uint8_t *memPtr, size_t nElements, size_t elementSize,
-                    mm_mode mode);
+int mm_acquire_page(const uint8_t *memPtr, const int nElements,
+                    const int elementSize, mm_mode mode);
 /**
  * @brief Get the number of currently active pages
  * @return number of currently active pages
  */
-size_t mm_get_n_active_pages(void);
+int mm_get_n_active_pages(void);
 
 /**
  * @brief Get number of (possibly) dirty pages
  * @return number of (possibly) dirty pages
  */
-size_t mm_get_n_dirty_pages(void);
+int mm_get_n_dirty_pages(void);
 void mm_init_lru(void);
 
 /**
@@ -85,6 +97,6 @@ void mm_restore(void);
  * @brief Save all modified pages to FRAM
  * @return number of bytes saved
  */
-unsigned mm_flush(void);
+int mm_flush(void);
 
 #endif /* SRC_MEMORY_MANAGEMENT_H_ */

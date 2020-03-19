@@ -10,6 +10,8 @@ cmake_minimum_required(VERSION 3.10)
 # ------ Options -------
 option(SIMULATION "Enable fused simulation control (via SIMPLE_MONITOR)" ON)
 
+set(SIMULATION "1" CACHE STRING "Enable simulation-specific code.")
+
 IF(NOT DEFINED TARGET_ARCH)
   message(FATAL_ERROR "TARGET_ARCH undefined, must be one of {cm0, msp430}")
 ENDIF()

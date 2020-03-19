@@ -62,6 +62,17 @@ ELSEIF(${TARGET_ARCH} STREQUAL "cm0")
       $ENV{FUSED_ROOT}/include
     )
 
+  IF(${SIMULATION})
+    include_directories(
+      $ENV{HOME}/git-arm/fused/include/
+    )
+    add_compile_options(
+      -DSIMULATION
+      )
+  ENDIF()
+
+  add_compile_options(-DCM0_ARCH)
+
   # Make sure only thumb-libraries are used
   add_compile_options(
       -DCM0_ARCH

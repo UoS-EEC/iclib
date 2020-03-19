@@ -6,24 +6,22 @@
  */
 
 /***************************** Include Files *********************************/
-#include <stdint.h>
-#include <string.h>
 #include "lib/iclib/ic.h"
 #include "lib/iclib/memory-management.h"
 #include "lib/support/support.h"
+#include <stdint.h>
+#include <string.h>
 
 /*************************** Global Definitions ******************************/
 
-static unsigned mm_n_dirty_pages = 0;
-static unsigned mm_n_active_pages = 0;
+static int mm_n_dirty_pages = 0;
+static int mm_n_active_pages = 0;
 
 /************************** Constant Definitions *****************************/
-extern uint8_t __mmdata_low;
-extern uint8_t __mmdata_high;
-extern uint8_t __mmdata_loadLow;
+extern uint8_t __mmdata_low, __mmdata_high, __mmdata_loadLow;
 
 struct LRU_candidate {
-  uint8_t pageNumber;
+  const uint8_t pageNumber;
   uint8_t tableIdx;
 };
 
@@ -32,25 +30,49 @@ struct LRU_candidate {
 /***************** Macros ****************************************************/
 #define NPAGES (MMDATA_SIZE / PAGE_SIZE)
 
-#define DUMMY_PAGE 255    //! Used for LRU table
-#define REFCNT_MASK 0x3F  //! Reference count
-#define LOADED 0x80       //! Mask to check if loaded
-#define MODIFIED 0x40     //! Mask to check if modified
+#define DUMMY_PAGE 255   //! Used for LRU table
+#define REFCNT_MASK 0x3F //! Reference count
+#define LOADED 0x80      //! Mask to check if loaded
+#define MODIFIED 0x40    //! Mask to check if modified
 
 #if NPAGES >= DUMMY_PAGE
 #error Too many pages, increase page size or reduce memory usage
 #endif
 
 #ifdef MSP430_ARCH
-#define memcpy fastmemcpy  // Replace memcpy with fast implementation
+#define memcpy fastmemcpy // Replace memcpy with fast implementation
+#endif
+
+#ifdef MSP430_ARCH
+#define MEMCPY MEMCPY
+#define IRQ_DISABLE                                                            \
+  do {                                                                         \
+    __disable_interrupt();                                                     \
+  } while (0)
+#define IRQ_ENABLE                                                             \
+  do {                                                                         \
+    __enable_interrupt();                                                      \
+  } while (0)
+#define IRQ_ENABLED __get_SR_register() & GIE
+#elif defined(CM0_ARCH)
+#define MEMCPY memcpy
+#define IRQ_DISABLE                                                            \
+  do {                                                                         \
+    disable_interrupt();                                                       \
+  } while (0)
+#define IRQ_ENABLE                                                             \
+  do {                                                                         \
+    enable_interrupt();                                                        \
+  } while (0)
+#define IRQ_ENABLED get_interrupt_enable()
 #endif
 
 /************************** Function Prototypes ******************************/
-static void writePageFRAM(uint8_t pageNumber);
-static void loadPage(uint8_t pageNumber);
-static void addLRU(uint8_t pageNumber);
-static void clearLRU(uint8_t index);
-static void clearLRUPage(uint8_t pageNumber);
+static void writePageNvm(const uint8_t pageNumber);
+static void loadPage(const uint8_t pageNumber);
+static void addLRU(const uint8_t pageNumber);
+static void clearLRU(const uint8_t index);
+static void clearLRUPage(const uint8_t pageNumber);
 
 /*************************** Extern Functions ********************************/
 
@@ -61,24 +83,23 @@ static uint8_t lruTable[MAX_DIRTY_PAGES];
 
 /*************************** Function definitions ****************************/
 
-int mm_acquire(const uint8_t *memPtr, mm_mode mode) {
-#ifndef MANAGEDSTATE
+int mm_acquire(const uint8_t *memPtr, const mm_mode mode) {
+#if defined(ALLOCATEDSTATE) || defined(QUICKRECALL)
   return 0;
 #endif
-  if ((&__mmdata_low > (uint8_t *)memPtr) ||
-      (&__mmdata_high < (uint8_t *)memPtr)) {
+  if ((&__mmdata_low > memPtr) || (&__mmdata_high < memPtr)) {
     while (1)
-      ;  // Error: Pointer out of bounds.
+      ; // Error: Pointer out of bounds.
   }
 
-  unsigned pageNumber = (unsigned)(memPtr - &__mmdata_low) / PAGE_SIZE;
+  int pageNumber = ((word_t)memPtr - (word_t)&__mmdata_low) / PAGE_SIZE;
 
   if ((attributeTable[pageNumber] & REFCNT_MASK) >= 64) {
     while (1)
-      ;  // Error: Too many references to a single page
+      ; // Error: Too many references to a single page
   }
 
-  if (mode == MM_READWRITE) {  // && !(attributeTable[pageNumber] & MODIFIED)){
+  if (mode == MM_READWRITE) {
     if (mm_n_dirty_pages >= MAX_DIRTY_PAGES) {
       // Need to write back an inactive and dirty page first
       for (int i = MAX_DIRTY_PAGES - 1; i >= 0; i--) {
@@ -87,7 +108,7 @@ int mm_acquire(const uint8_t *memPtr, mm_mode mode) {
           if ((attributeTable[candidate] & REFCNT_MASK) == 0 &&
               (attributeTable[candidate] & LOADED) &&
               (attributeTable[candidate] & MODIFIED)) {
-            writePageFRAM(candidate);
+            writePageNvm(candidate);
             clearLRU(i);
             break;
           }
@@ -96,12 +117,12 @@ int mm_acquire(const uint8_t *memPtr, mm_mode mode) {
 
       if (mm_n_dirty_pages >= MAX_DIRTY_PAGES) {
         while (1)
-          ;  // Error: MAX_DIRTY_PAGES exceeded
+          ; // Error: MAX_DIRTY_PAGES exceeded
       }
     }
 
     if (!(attributeTable[pageNumber] &
-          MODIFIED)) {  // if page isn't already dirty
+          MODIFIED)) { // if page isn't already dirty
       mm_n_dirty_pages++;
       attributeTable[pageNumber] |= MODIFIED;
     }
@@ -132,7 +153,7 @@ int mm_release(const uint8_t *memPtr) {
 #ifndef MANAGEDSTATE
   return 0;
 #endif
-  unsigned pageNumber = (memPtr - &__mmdata_low) / PAGE_SIZE;
+  int pageNumber = ((word_t)memPtr - (word_t)&__mmdata_low) / PAGE_SIZE;
   if ((attributeTable[pageNumber] & REFCNT_MASK) > 0) {
     attributeTable[pageNumber]--;
     if ((attributeTable[pageNumber] & REFCNT_MASK) == 0) {
@@ -140,14 +161,14 @@ int mm_release(const uint8_t *memPtr) {
     }
   } else {
     while (1)
-      ;  // Error: Attempt to release inactive page
+      ; // Error: Attempt to release inactive page
   }
   return 0;
 }
 
 void mm_restore(void) {
-#ifndef MANAGEDSTATE
-  memcpy(&__mmdata_low, &__mmdata_loadLow, &__mmdata_high - &__mmdata_low);
+#if defined(ALLOCATEDSTATE) || defined(QUICKRECALL)
+  MEMCPY(&__mmdata_low, &__mmdata_loadLow, &__mmdata_high - &__mmdata_low);
   return;
 #endif
 
@@ -161,11 +182,11 @@ void mm_restore(void) {
   }
 }
 
-unsigned mm_flush(void) {
+int mm_flush(void) {
 #ifndef MANAGEDSTATE
   // Save entire section
-  memcpy(&__mmdata_loadLow, &__mmdata_low, &__mmdata_high - &__mmdata_low);
-  return (size_t)(&__mmdata_high - &__mmdata_low);
+  MEMCPY(&__mmdata_loadLow, &__mmdata_low, &__mmdata_high - &__mmdata_low);
+  return ((word_t)&__mmdata_high - (word_t)&__mmdata_low);
 #endif
   unsigned pagesSaved = 0;
 
@@ -173,7 +194,7 @@ unsigned mm_flush(void) {
     if (mm_n_dirty_pages == 0) {
       break;
     } else if (attributeTable[pageNumber] & MODIFIED) {
-      writePageFRAM(pageNumber);
+      writePageNvm(pageNumber);
       pagesSaved++;
       if ((attributeTable[pageNumber] & REFCNT_MASK) == 0) {
         clearLRUPage(pageNumber);
@@ -188,32 +209,28 @@ unsigned mm_flush(void) {
 }
 
 /**
- * @brief Write a page to FRAM
+ * @brief Write a page to NVM
  * @param pageNumber
  */
-static void writePageFRAM(uint8_t pageNumber) {
-  uint8_t *dstStart;
-  uint8_t *srcStart;
-  unsigned pageOffset = pageNumber * PAGE_SIZE;
-  unsigned len;
+static void writePageNvm(const uint8_t pageNumber) {
+  word_t pageOffset = pageNumber * PAGE_SIZE;
+  int len;
 
   if (!(attributeTable[pageNumber] & MODIFIED)) {
     return;
   }
 
-  const bool old_gie = get_interrupt_enable();
-  disable_interrupt();  // Critical section (attributes get messed up if
-                        // interrupted)
-  srcStart = &__mmdata_low + pageOffset;
-  dstStart = &__mmdata_loadLow + pageOffset;
-  if (srcStart + PAGE_SIZE > &__mmdata_high) {
-    len = (unsigned)(&__mmdata_high - srcStart);
-  } else {
-    len = PAGE_SIZE;
+  word_t old_gie = IRQ_ENABLED;
+  IRQ_DISABLE; // Critical section (attributes get messed up if interrupted)
+  word_t srcStart = (word_t)&__mmdata_low + pageOffset;
+  word_t dstStart = (word_t)(&__mmdata_loadLow) + pageOffset;
+  len = PAGE_SIZE;
+  if (srcStart + PAGE_SIZE > (word_t)&__mmdata_high) {
+    len = (word_t)&__mmdata_high - srcStart;
   }
 
   // Save page
-  memcpy(dstStart, srcStart, len);
+  MEMCPY((uint8_t *)dstStart, (uint8_t *)srcStart, len);
 
   if ((attributeTable[pageNumber] & REFCNT_MASK) == 0) {
     // Page is clean
@@ -221,18 +238,18 @@ static void writePageFRAM(uint8_t pageNumber) {
     mm_n_dirty_pages--;
   }
   if (old_gie) {
-    enable_interrupt();
+    IRQ_ENABLE;
   }
 }
 
-int mm_acquire_array(const uint8_t *memPtr, size_t len, mm_mode mode) {
-#ifndef MANAGEDSTATE
+int mm_acquire_array(const uint8_t *memPtr, const int len, const mm_mode mode) {
+#if defined(ALLOCATEDSTATE) || defined(QUICKRECALL)
   return 0;
 #endif
   int status = 0;
   // Acquire each page referenced
   const uint8_t *ptr = memPtr;
-  size_t remaining = len;
+  int remaining = len;
   while (remaining > 0) {
     status = mm_acquire(ptr, mode);
     if (remaining > PAGE_SIZE) {
@@ -246,8 +263,8 @@ int mm_acquire_array(const uint8_t *memPtr, size_t len, mm_mode mode) {
   return status;
 }
 
-int mm_release_array(const uint8_t *memPtr, size_t len) {
-#ifndef MANAGEDSTATE
+int mm_release_array(const uint8_t *memPtr, const int len) {
+#if defined(ALLOCATEDSTATE) || defined(QUICKRECALL)
   return 0;
 #endif
   int status = 0;
@@ -256,12 +273,12 @@ int mm_release_array(const uint8_t *memPtr, size_t len) {
   if ((memPtr > &__mmdata_high) || (memPtr < &__mmdata_low) ||
       (memPtr + len) > &__mmdata_high) {
     while (1)
-      ;  // Error: access out of bounds
+      ; // Error: access out of bounds
   }
 
   // Release each page referenced
   const uint8_t *ptr = memPtr;
-  size_t remaining = len;
+  int remaining = len;
   while (remaining > 0) {
     status = mm_release(ptr);
     if (remaining > PAGE_SIZE) {
@@ -275,8 +292,8 @@ int mm_release_array(const uint8_t *memPtr, size_t len) {
   return status;
 }
 
-size_t mm_get_n_active_pages(void) {
-  size_t nActive = 0;
+int mm_get_n_active_pages(void) {
+  int nActive = 0;
   for (int i = 0; i < NPAGES; i++) {
     if ((attributeTable[i] & REFCNT_MASK) > 0) {
       nActive++;
@@ -285,20 +302,20 @@ size_t mm_get_n_active_pages(void) {
   return nActive;
 }
 
-size_t mm_get_n_dirty_pages(void) { return mm_n_dirty_pages; }
+int mm_get_n_dirty_pages(void) { return mm_n_dirty_pages; }
 
-int mm_acquire_page(const uint8_t *memPtr, size_t nElements, size_t elementSize,
-                    mm_mode mode) {
-#ifndef MANAGEDSTATE
+int mm_acquire_page(const uint8_t *memPtr, const int nElements,
+                    const int elementSize, mm_mode mode) {
+#if defined(ALLOCATEDSTATE) || defined(QUICKRECALL)
   return nElements;
 #endif
   int bytesAcquired;
 
   // Check if first element crosses a page boundary
-  unsigned pageNumberStart = (memPtr - &__mmdata_low) / PAGE_SIZE;
-  unsigned pageNumberEnd =
-      (memPtr + elementSize - 1  // end address of first element
-       - &__mmdata_low           // - start address
+  word_t pageNumberStart = (memPtr - &__mmdata_low) / PAGE_SIZE;
+  word_t pageNumberEnd =
+      (memPtr + elementSize - 1 // end address of first element
+       - &__mmdata_low          // - start address
        ) /
       PAGE_SIZE;
 
@@ -326,21 +343,17 @@ int mm_acquire_page(const uint8_t *memPtr, size_t nElements, size_t elementSize,
  * @brief Load page from FRAM if it is not already loaded.
  * @param pageNumber
  */
-static void loadPage(uint8_t pageNumber) {
+static void loadPage(const uint8_t pageNumber) {
   if (!(attributeTable[pageNumber] & LOADED)) {
-    uint8_t *srcStart;
-    uint8_t *dstStart;
-    unsigned len;
-    unsigned pageOffset = pageNumber * PAGE_SIZE;
-
-    dstStart = &__mmdata_low + pageOffset;      // Memory address
-    srcStart = &__mmdata_loadLow + pageOffset;  // Snapshot address
-    len = PAGE_SIZE;
-    if (dstStart + PAGE_SIZE > &__mmdata_high) {
-      len = (unsigned)(&__mmdata_high - dstStart);
+    uint16_t pageOffset = pageNumber * PAGE_SIZE;
+    uint8_t *dstStart = &__mmdata_low + pageOffset;     // Memory address
+    uint8_t *srcStart = &__mmdata_loadLow + pageOffset; // Snapshot address
+    int len = PAGE_SIZE;
+    if ((addr_t)dstStart + PAGE_SIZE > (addr_t)&__mmdata_high) {
+      len = (addr_t)&__mmdata_high - (addr_t)dstStart;
     }
 
-    memcpy(dstStart, srcStart, len);
+    MEMCPY(dstStart, srcStart, len);
     attributeTable[pageNumber] |= LOADED;
   }
 }
@@ -358,12 +371,12 @@ void mm_init_lru(void) {
  * @brief Add a new reference to LRU table.
  * @param pageNumber
  */
-static void addLRU(uint8_t pageNumber) {
+static void addLRU(const uint8_t pageNumber) {
   uint8_t tmp1, tmp2;
 
   if (pageNumber > NPAGES) {
     while (1)
-      ;  // Error: page number out of bounds.
+      ; // Error: page number out of bounds.
   }
 
   tmp1 = pageNumber;
@@ -398,13 +411,13 @@ static void addLRU(uint8_t pageNumber) {
  * @brief Clear a page from the LRU table at index.
  * @param index
  */
-static void clearLRU(uint8_t index) { lruTable[index] = DUMMY_PAGE; }
+static void clearLRU(const uint8_t index) { lruTable[index] = DUMMY_PAGE; }
 
 /**
  * @brief Clear a page from the LRU table.
  * @param pageNumber
  */
-static void clearLRUPage(uint8_t pageNumber) {
+static void clearLRUPage(const uint8_t pageNumber) {
   for (int i = MAX_DIRTY_PAGES - 1; i >= 0; i--) {
     if (lruTable[i] == pageNumber) {
       lruTable[i] = DUMMY_PAGE;

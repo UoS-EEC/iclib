@@ -16,11 +16,11 @@ target_link_libraries( ${TESTNAME}
   )
 
 IF(${METHOD} STREQUAL "QR")
-  target_compile_definitions( ${TESTNAME} PRIVATE -DQUICKRECALL)
+  target_compile_definitions( ${TESTNAME} PUBLIC -DQUICKRECALL)
 ELSEIF(${METHOD} STREQUAL "AS")
-  target_compile_definitions( ${TESTNAME} PRIVATE -DALLOCATEDSTATE)
+  target_compile_definitions( ${TESTNAME} PUBLIC -DALLOCATEDSTATE)
 ELSEIF(${METHOD} STREQUAL "MS")
-  target_compile_definitions( ${TESTNAME} PRIVATE -DMANAGEDSTATE)
+  target_compile_definitions( ${TESTNAME} PUBLIC -DMANAGEDSTATE)
 ENDIF()
 
 
