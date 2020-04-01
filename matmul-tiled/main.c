@@ -1,7 +1,14 @@
-#include "support/support.h"
-#include "iclib/ic.h"
+/*
+ * Copyright (c) 2018-2020, University of Southampton.
+ * All rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
 #include <string.h>
+#include "iclib/ic.h"
 #include "input.h"
+#include "support/support.h"
 
 int16_t output[MATSIZE][MATSIZE] MMDATA;
 
