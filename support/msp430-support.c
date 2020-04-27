@@ -11,9 +11,9 @@
 
 void target_init() {}
 
-void indicate_begin() { P1OUT |= BIT0; }
+void indicate_begin() { P1OUT |= BIT2; }
 
-void indicate_end() { P1OUT &= ~BIT0; }
+void indicate_end() { P1OUT &= ~BIT2; }
 
 void wait() {
   for (volatile long int i = 0; i < (16 - FRAM_WAIT) * 2000l; i++)
