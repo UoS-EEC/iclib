@@ -1,76 +1,32 @@
-//#define LOG_PRINT
 /*
  * Copyright (c) 2019 Vito Kortbeek (v.kortbeek-1@tudelft.nl) TU Delft Embedded
- * and Networked Systems Group/Sustainable Systems Laboratory. Copyright (c)
+ * and Networked Systems Group/Sustainable Systems Laboratory.
+ *
  * Copyright (c) 2020 University of Southampton. All rights reserved.
  *
  * SPDX-License-Identifier: MIT
  */
 
 /*
- * Modified 2020 for use with ICLib, by Sivert Sliper
+ * Modified 2020 for use with ICLib by Sivert Sliper, Univeristy of Southamption
  */
 
-#include <msp430.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "support/support.h"
 
-
-/* Sqrt.c */
-/* Square root by Newton's method */
-uint16_t sqrt16(uint32_t x) {
-  uint16_t hi = 0xffff;
-  uint16_t lo = 0;
-  uint16_t mid = ((uint32_t)hi + (uint32_t)lo) >> 1;
-  uint32_t s = 0;
-
-  while (s != x && hi - lo > 1) {
-    mid = ((uint32_t)hi + (uint32_t)lo) >> 1;
-    s = (uint32_t)mid * (uint32_t)mid;
-    if (s < x)
-      lo = mid;
-    else
-      hi = mid;
-  }
-
-  return mid;
-}
-
-#ifdef LOG_PRINT
-#define LOG(...)         \
-  do {                   \
-    printf("Log: ");     \
-    printf(__VA_ARGS__); \
-  } while (0)
-#else /* !LOG_PRINT */
-#define LOG(...)
-#endif /* LOG_PRINT */
-
-#ifdef PRINTF_PRINT
-#define PRINTF printf
-#else
-#define PRINTF(...)
-#endif /* PRINTF_PRINT */
-
-//#define USE_LEDS
-
+/* ------ Parameters ------ */
 // Number of samples to discard before recording training set
 #define NUM_WARMUP_SAMPLES 3
-
 #define ACCEL_WINDOW_SIZE 3
 #define MODEL_SIZE 16
 #define SAMPLE_NOISE_FLOOR 10  // TODO: made up value
-
 // Number of classifications to complete in one experiment
 #define SAMPLES_TO_COLLECT 128
 
-#define TASK_CHECKPOINT(...)
-
-#include "ftest_util.h"
-void mspconsole_init();
-
+/* ------ Types ------ */
 typedef struct {
   uint8_t x;
   uint8_t y;
@@ -108,66 +64,73 @@ typedef struct {
   unsigned stationaryCount;
 } stats_t;
 
-/* Globals */
-NVM unsigned int count = 1;
-NVM model_t model;
+/* ------ Globals ------ */
+static model_t model;
+static void transform(accelWindow window);
 
-void ACCEL_singleSample(threeAxis_t_8 *result) {
-  NVM static unsigned int _v_seed = 1;
+/* ------ Function prototypes ------ */
+//! Train model
+void train(features_t *classModel);
+
+//! Perform full sample->process->classify pipeline
+void recognize(model_t *model);
+
+//! Sample the accelerometer (emulated with random numbers)
+static void ACCEL_singleSample(threeAxis_t_8 *result);
+
+//! Sample a new window
+static void acquire_window(accelWindow window);
+
+//! Threshold (zero any samples < SAMPLE_NOISE_FLOOR)
+static void transform(accelWindow window);
+
+//! Feature extraction (mean and stddev)
+static void featurize(features_t *features, accelWindow aWin);
+
+//! Classify
+static class_t classify(features_t *features, model_t *model);
+
+//! Record classification statistics
+static void record_stats(stats_t *stats, class_t class);
+
+//! Warmup samples (discard NUM_WARMUP_SAMPLES samples)
+static void warmup_sensor(void);
+
+//! Square root by Newton's method
+static uint16_t sqrt16(uint32_t x);
+/* ------ Function definitions ------ */
+static void ACCEL_singleSample(threeAxis_t_8 *result) {
+  static unsigned int _v_seed = 1;
 
   unsigned int seed = _v_seed;
-
   result->x = (seed * 17) % 85;
   result->y = (seed * 17 * 17) % 85;
   result->z = (seed * 17 * 17 * 17) % 85;
   _v_seed = ++seed;
 }
 
-#define accel_sample ACCEL_singleSample
-
-void acquire_window(accelWindow window) {
+static void acquire_window(accelWindow window) {
   accelReading sample;
   unsigned samplesInWindow = 0;
-
-  TASK_CHECKPOINT();
-
   while (samplesInWindow < ACCEL_WINDOW_SIZE) {
-    accel_sample(&sample);
-    LOG("acquire: sample %u %u %u\r\n", sample.x, sample.y, sample.z);
-
+    ACCEL_singleSample(&sample);
     window[samplesInWindow++] = sample;
   }
 }
 
-void transform(accelWindow window) {
-  unsigned i = 0;
-
-  LOG("transform\r\n");
-
-  for (i = 0; i < ACCEL_WINDOW_SIZE; i++) {
+static void transform(accelWindow window) {
+  for (unsigned i = 0; i < ACCEL_WINDOW_SIZE; i++) {
     accelReading *sample = &window[i];
-
-    if (sample->x < SAMPLE_NOISE_FLOOR || sample->y < SAMPLE_NOISE_FLOOR ||
-        sample->z < SAMPLE_NOISE_FLOOR) {
-      LOG("transform: sample %u %u %u\r\n", sample->x, sample->y, sample->z);
-
-      sample->x = (sample->x > SAMPLE_NOISE_FLOOR) ? sample->x : 0;
-      sample->y = (sample->y > SAMPLE_NOISE_FLOOR) ? sample->y : 0;
-      sample->z = (sample->z > SAMPLE_NOISE_FLOOR) ? sample->z : 0;
-    }
+    sample->x = (sample->x > SAMPLE_NOISE_FLOOR) ? sample->x : 0;
+    sample->y = (sample->y > SAMPLE_NOISE_FLOOR) ? sample->y : 0;
+    sample->z = (sample->z > SAMPLE_NOISE_FLOOR) ? sample->z : 0;
   }
 }
 
-void featurize(features_t *features, accelWindow aWin) {
-  TASK_CHECKPOINT();
-
+static void featurize(features_t *features, accelWindow aWin) {
   accelReading mean;
-  accelReading stddev;
-
   mean.x = mean.y = mean.z = 0;
-  stddev.x = stddev.y = stddev.z = 0;
-  int i;
-  for (i = 0; i < ACCEL_WINDOW_SIZE; i++) {
+  for (int i = 0; i < ACCEL_WINDOW_SIZE; i++) {
     mean.x += aWin[i].x;  // x
     mean.y += aWin[i].y;  // y
     mean.z += aWin[i].z;  // z
@@ -181,7 +144,9 @@ void featurize(features_t *features, accelWindow aWin) {
   mean.y >>= 2;
   mean.z >>= 2;
 
-  for (i = 0; i < ACCEL_WINDOW_SIZE; i++) {
+  accelReading stddev;
+  stddev.x = stddev.y = stddev.z = 0;
+  for (int i = 0; i < ACCEL_WINDOW_SIZE; i++) {
     stddev.x +=
         aWin[i].x > mean.x ? aWin[i].x - mean.x : mean.x - aWin[i].x;  // x
     stddev.y +=
@@ -204,19 +169,14 @@ void featurize(features_t *features, accelWindow aWin) {
 
   features->meanmag = sqrt16(meanmag);
   features->stddevmag = sqrt16(stddevmag);
-
-  LOG("featurize: mean %u sd %u\r\n", features->meanmag, features->stddevmag);
 }
 
-class_t classify(features_t *features, model_t *model) {
+static class_t classify(features_t *features, model_t *model) {
   int move_less_error = 0;
   int stat_less_error = 0;
   features_t *model_features;
-  int i;
 
-  TASK_CHECKPOINT();
-
-  for (i = 0; i < MODEL_SIZE; ++i) {
+  for (int i = 0; i < MODEL_SIZE; ++i) {
     model_features = &model->stationary[i];
 
     long int stat_mean_err =
@@ -256,19 +216,11 @@ class_t classify(features_t *features, model_t *model) {
 
   class_t class =
       move_less_error > stat_less_error ? CLASS_MOVING : CLASS_STATIONARY;
-  LOG("classify: class %u\r\n", class);
-
   return class;
 }
 
-void record_stats(stats_t *stats, class_t class) {
-  TASK_CHECKPOINT();
-
-  /* stats->totalCount, stats->movingCount, and stats->stationaryCount have an
-   * nv-internal consistency requirement.  This code should be atomic. */
-
+static void record_stats(stats_t *stats, class_t class) {
   stats->totalCount++;
-
   switch (class) {
     case CLASS_MOVING:
       stats->movingCount++;
@@ -278,63 +230,32 @@ void record_stats(stats_t *stats, class_t class) {
       stats->stationaryCount++;
       break;
   }
-
-  LOG("stats: s %u m %u t %u\r\n", stats->stationaryCount, stats->movingCount,
-      stats->totalCount);
 }
 
-void print_stats(stats_t *stats) {
-  unsigned resultStationaryPct =
-      stats->stationaryCount * 100 / stats->totalCount;
-  unsigned resultMovingPct = stats->movingCount * 100 / stats->totalCount;
-
-  unsigned sum = stats->stationaryCount + stats->movingCount;
-
-  PRINTF("stats: s %u (%u%%) m %u (%u%%) sum/tot %u/%u: %c\r\n",
-         stats->stationaryCount, resultStationaryPct, stats->movingCount,
-         resultMovingPct, stats->totalCount, sum,
-         sum == stats->totalCount && sum == SAMPLES_TO_COLLECT ? 'V' : 'X');
-}
-
-void warmup_sensor(void) {
+static void warmup_sensor(void) {
   unsigned discardedSamplesCount = 0;
   accelReading sample;
-
-  TASK_CHECKPOINT();
-
-  LOG("warmup\r\n");
-
   while (discardedSamplesCount++ < NUM_WARMUP_SAMPLES) {
-    accel_sample(&sample);
+    ACCEL_singleSample(&sample);
   }
 }
 
 void train(features_t *classModel) {
   accelWindow sampleWindow;
   features_t features;
-  unsigned i;
 
   warmup_sensor();
 
-  for (i = 0; i < MODEL_SIZE; ++i) {
+  for (unsigned i = 0; i < MODEL_SIZE; ++i) {
     acquire_window(sampleWindow);
     transform(sampleWindow);
     featurize(&features, sampleWindow);
-
-    TASK_CHECKPOINT();
-
     classModel[i] = features;
   }
-
-  PRINTF("train: done: mn %u sd %u\r\n", features.meanmag, features.stddevmag);
 }
 
 void recognize(model_t *model) {
-#ifdef MEMENTOS_NONVOLATILE
-  static __nv stats_t stats;
-#else
-  stats_t stats;
-#endif
+  static stats_t stats;
 
   accelWindow sampleWindow;
   features_t features;
@@ -352,116 +273,37 @@ void recognize(model_t *model) {
     class = classify(&features, model);
     record_stats(&stats, class);
   }
-
-  print_stats(&stats);
-}
-
-void end_of_benchmark(void) {
-  PRINTF("This is the end of the AR benchmark\n");
-  exit(0);
-  // while (1);
-}
-
-void count_error(void) {
-  PRINTF("An error occured during count, count = %d\n", count);
-}
-
-run_mode_t select_mode(uint8_t *prev_pin_state) {
-  uint8_t pin_state;
-
-  TASK_CHECKPOINT();
-
-  count = count + 1;
-
-  /* The InK order
-   *  rounds:
-   *      1,2 = MODE_TRAIN_MOVING
-   *      3,4 = MODE_TRAIN_STATIONARY
-   *      5,6 = MODE_RECOGNIZE
-   *      7   = END OF BENCHMARK
-   */
-  switch (count) {
-    case 1:
-    case 2:
-      pin_state = MODE_TRAIN_MOVING;
-      break;
-    case 3:
-    case 4:
-      pin_state = MODE_TRAIN_STATIONARY;
-      break;
-    case 5:
-    case 6:
-      pin_state = MODE_RECOGNIZE;
-      break;
-    case 7:
-      end_of_benchmark();
-      break;
-    default:
-      pin_state = MODE_IDLE;
-      count_error();
-  }
-
-  // pin_state = GPIO(PORT_AUX, IN) & (BIT(PIN_AUX_1) | BIT(PIN_AUX_2));
-
-  // Don't re-launch training after finishing training
-  // Vito: could have done this while assigning pin_state. But keep is the same
-  // as the original
-  if ((pin_state == MODE_TRAIN_STATIONARY || pin_state == MODE_TRAIN_MOVING) &&
-      pin_state == *prev_pin_state) {
-    pin_state = MODE_IDLE;
-  } else {
-    *prev_pin_state = pin_state;
-  }
-
-  LOG("selectMode: pins %04x\r\n", pin_state);
-
-  return (run_mode_t)pin_state;
-}
-
-void init() {
-  WDTCTL = WDTPW | WDTHOLD;  // Stop WDT
-
-  // Disable FRAM wait cycles to allow clock operation over 8MHz
-  FRCTL0 = 0xA500 | ((1) << 4);  // FRCTLPW | NWAITS_1;
-  __delay_cycles(3);
-
-  /* init FRAM */
-  FRCTL0_H |= (FWPW) >> 8;
-
-  /* init debug UART */
-  PM5CTL0 &= ~LOCKLPM5;
-  mspconsole_init();
-  __enable_interrupt();
 }
 
 int main() {
-  // "Globals" must be on the stack because Mementos doesn't handle real
-  // globals correctly
-  uint8_t prev_pin_state = MODE_IDLE;
-
-  init();
-
-  // count = 1;
-
+  target_init();
   while (1) {
-    run_mode_t mode = select_mode(&prev_pin_state);
-    switch (mode) {
-      case MODE_TRAIN_STATIONARY:
-        LOG("mode: stationary\r\n");
-        train(model.stationary);
-        break;
-      case MODE_TRAIN_MOVING:
-        LOG("mode: moving\r\n");
-        train(model.moving);
-        break;
-      case MODE_RECOGNIZE:
-        LOG("mode: recognize\r\n");
-        recognize(&model);
-        break;
-      default:
-        LOG("mode: idle\r\n");
-        break;
-    }
+    indicate_begin();
+    train(model.moving);
+    train(model.moving);
+    train(model.stationary);
+    train(model.stationary);
+    recognize(&model);
+    indicate_end();
+    wait();  // Delay
   }
   return 0;
+}
+
+static uint16_t sqrt16(uint32_t x) {
+  uint16_t hi = 0xffff;
+  uint16_t lo = 0;
+  uint16_t mid = ((uint32_t)hi + (uint32_t)lo) >> 1;
+  uint32_t s = 0;
+
+  while (s != x && hi - lo > 1) {
+    mid = ((uint32_t)hi + (uint32_t)lo) >> 1;
+    s = (uint32_t)mid * (uint32_t)mid;
+    if (s < x)
+      lo = mid;
+    else
+      hi = mid;
+  }
+
+  return mid;
 }
