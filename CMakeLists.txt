@@ -35,4 +35,5 @@ add_subdirectory(matmul)
 add_subdirectory(matmul-tiled)
 add_subdirectory(crc)
 add_subdirectory(activity-recognition)
+add_subdirectory(cem)
 
