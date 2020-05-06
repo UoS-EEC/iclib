@@ -8,13 +8,14 @@
  */
 
 /*
- * Modified 2020 for use with ICLib by Sivert Sliper, Univeristy of Southamption
+ * Modified 2020 for use with ICLib by Sivert Sliper, University of Southamption
  */
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "iclib/ic.h"
 #include "support/support.h"
 
 /* ------ Parameters ------ */
@@ -98,6 +99,7 @@ static void warmup_sensor(void);
 
 //! Square root by Newton's method
 static uint16_t sqrt16(uint32_t x);
+
 /* ------ Function definitions ------ */
 static void ACCEL_singleSample(threeAxis_t_8 *result) {
   static unsigned int _v_seed = 1;
