@@ -7,7 +7,7 @@
 
 cmake_minimum_required(VERSION 3.0)
 
-FOREACH(METHOD "MS" "AS" "QR")
+FOREACH(METHOD "AS" "QR")
   set(TESTNAME "ar-${METHOD}-${TARGET_ARCH}")
   add_executable(
     ${TESTNAME}
