@@ -278,17 +278,15 @@ void recognize(model_t *model) {
 }
 
 int main() {
-  target_init();
-  while (1) {
-    indicate_begin();
+  for (volatile unsigned i = 0; i < 2; i++) {
+    indicate_workload_begin();
     train(model.moving);
-    train(model.moving);
-    train(model.stationary);
     train(model.stationary);
     recognize(&model);
-    indicate_end();
+    indicate_workload_end();
     wait();  // Delay
   }
+  end_experiment();
   return 0;
 }
 

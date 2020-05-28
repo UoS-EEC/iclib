@@ -1,26 +1,38 @@
 /*
- * Copyright (c) 2018-2020, University of Southampton.
+ * Copyright (c) 2019-2020, University of Southampton and Contributors.
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <fused.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include "support/support.h"
+#include "cm0-support.h"
 
-void indicate_begin() {
+#ifdef SIMULATION
+#include <fused.h>
+#endif
+
+void indicate_workload_begin() {
+#ifdef SIMULATION
   SIMPLE_MONITOR = SIMPLE_MONITOR_INDICATE_BEGIN;
+#endif
   ;
 }
 
-void indicate_end() { SIMPLE_MONITOR = SIMPLE_MONITOR_INDICATE_END; }
+void indicate_workload_end() {
+#ifdef SIMULATION
+  SIMPLE_MONITOR = SIMPLE_MONITOR_INDICATE_END;
+#endif
+}
 
-void fused_end_simulation() {
+void end_experiment() {
+#ifdef SIMULATION
   SIMPLE_MONITOR = SIMPLE_MONITOR_KILL_SIM;
+#endif
   while (1)
-    ;  // Just in case
+    ;
 }
 
 void wait() {
@@ -28,12 +40,27 @@ void wait() {
     ;  // delay
 }
 
-void fused_assert(bool c) {
-  if (!c) {
-    SIMPLE_MONITOR = SIMPLE_MONITOR_TEST_FAIL;
-    while (1)
-      ;
-  }
+void target_init() { return; }
+
+void disable_interrupt() { __asm__ volatile("cpsid i" :); }
+
+void enable_interrupt() { __asm__ volatile("cpsie i" :); }
+
+__attribute__((naked)) bool get_interrupt_enable() {
+  __asm__ volatile(
+      "mrs r0, primask\n"
+      "bx lr"
+      :);
 }
 
-void target_init() { return; }
+// Boot function
+__attribute__((optimize(1), naked, used, section(".ftext"))) void _start() {
+  // Boot data (if necessary)
+  extern uint8_t __data_low, __data_high, __data_loadLow;
+  if ((&__data_loadLow != &__data_low) && (&__data_low < &__data_high)) {
+    memcpy(&__data_low, &__data_loadLow, &__data_high - &__data_low + 1);
+  }
+
+  int main();
+  main();
+}

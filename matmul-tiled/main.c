@@ -60,11 +60,12 @@ void matmult(int m, int n, int16_t a[m][n], int16_t b[m][n],
 }
 
 int main(void) {
-  while (1) {
-    indicate_begin();
+  for (volatile unsigned i = 0; i < 3; ++i) {
+    indicate_workload_begin();
     matmult(MATSIZE, MATSIZE, a, b, output);
-    indicate_end();
+    indicate_workload_end();
     mm_flush();
     wait();
   }
+  end_experiment();
 }

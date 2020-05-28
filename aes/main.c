@@ -5,13 +5,13 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include "support/support.h"
-#include "iclib/ic.h"
 #include "TI_aes_128_encr_only.h"
+#include "iclib/ic.h"
+#include "support/support.h"
 
-#define AES_BLOCK_SIZE (16u) // bytes
+#define AES_BLOCK_SIZE (16u)  // bytes
 
-#include "lipsum.h" // Input string
+#include "lipsum.h"  // Input string
 
 static unsigned char key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
                               0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
@@ -19,9 +19,8 @@ static unsigned char key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 /* ------ Function Declarations ---------------------------------------------*/
 
 int main(void) {
-  target_init();
-  while (1) {
-    indicate_begin();
+  for (volatile unsigned i = 0; i < 3; i++) {
+    indicate_workload_begin();
     // AES128 in Cipher Block Chaining mode
     uint8_t *prevBlock;
     uint8_t *ptr = input;
@@ -38,8 +37,8 @@ int main(void) {
       mm_acquire_array(ptr, AES_BLOCK_SIZE, MM_READWRITE);
 
       // CBC - Cipher Block Chaining mode
-      for (int i = 0; i < AES_BLOCK_SIZE; i++) {
-        ptr[i] = ptr[i] ^ prevBlock[i];
+      for (int j = 0; j < AES_BLOCK_SIZE; j++) {
+        ptr[j] = ptr[j] ^ prevBlock[j];
       }
 
       // Release previous block
@@ -55,10 +54,11 @@ int main(void) {
     // Release last block
     mm_release_array(prevBlock, AES_BLOCK_SIZE);
 
-    indicate_end();
+    indicate_workload_end();
     mm_flush();
 
     // Delay
     wait();
   }
+  end_experiment();
 }
