@@ -154,11 +154,10 @@ void append_compressed(index_t parent, log_t *log) {
 }
 
 int main() {
-  target_init();
   static dict_t dict;
   static log_t log;
 
-  while (1) {
+  for (volatile unsigned i = 0; i < 3; i++) {
     init_dict(&dict);
 
     // Initialize the pointer into the dictionary to one of the root nodes
@@ -173,7 +172,7 @@ int main() {
     log.sample_count = 1;  // count the initial sample (see above)
     log.count = 0;         // init compressed counter
 
-    indicate_begin();
+    indicate_workload_begin();
     while (log.count < BLOCK_SIZE) {
       child = (index_t)letter;
       if (letter_idx == 0) {
@@ -198,7 +197,8 @@ int main() {
       append_compressed(parent, &log);
       add_node(letter, parent, &dict);
     }
-    indicate_end();
+    indicate_workload_end();
     wait();
   }
+  end_experiment();
 }

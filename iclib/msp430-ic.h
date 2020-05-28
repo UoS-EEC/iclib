@@ -5,27 +5,12 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#include <stdint.h>
+#pragma once
+
 #include "iclib/config.h"
 
-#define MMDATA __attribute__((section(".mmdata")))
-#define PERSISTENT __attribute__((section(".persistent")))
-
-// Global variables
-extern uint16_t mmdata_snapshot[];
-
-// Function Declarations
 /**
- * @brief Initialise peripherals and sleep until supply voltage recovers beyond
- * restore threshold
+ * @brief fastmemcpy Hand-crafted faster version of memcpy for msp430. The
+ * default implementation is very inefficient.
  */
-void ic_init(void);
-
-/**
- * @brief Update restore and suspend thresholds based on number of bytes to be
- * suspended/restored
- *
- * @param n_suspend
- * @param n_restore
- */
-void ic_update_thresholds(uint16_t n_suspend, uint16_t n_restore);
+void fastmemcpy(uint8_t *dst, uint8_t *src, size_t len);

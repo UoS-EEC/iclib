@@ -57,13 +57,12 @@ suspend_loop0: // Should never get here
     nop
     b suspend_loop0
 
-/*
- * @function void suspend_and_flush_cache(uint32_t *saved_sp, int *snapshotValid)
- * @brief Pushes registers to stack and flushes data cache
+/* @function void suspend_regs(uint32_t *saved_sp, int * snapshotValid)
+ * @brief pushes registers to stack, then sleeps.
  */
-.globl suspend_and_flush_cache
-.type suspend_and_flush_cache, %function
-suspend_and_flush_cache:
+.globl suspend_regs
+.type suspend_stack_and_regs, %function
+suspend_regs:
     // Push core registers to stack
     push {r0-r7,lr}
     mov r3, r8
@@ -79,15 +78,6 @@ suspend_and_flush_cache:
     mov r7, sp
     str r7, [r0]
 
-    // Flush cache
-    mov r4, #0x2 // DCACHE_CTRL_FLUSH
-    ldr r5, =0x40000010 // DCACHE_CTRL_CSR
-    str r4, [r5]
-  safc_loop0: // while(flushing)
-    ldr r4, [r5]
-    cmp r4, #0x2
-    beq safc_loop0
-
     // Set flag & suspend execution
     mov r4, #1
     str r4, [r1] //Set snapshotValid
@@ -95,9 +85,9 @@ suspend_and_flush_cache:
     ldr r5, =0x40000030 // OUTPORT_OUT
     str r4, [r5] //de-assert keepAlive
     wfe
-  safc_loop1:
+suspend_loop0002: // Should never get here
     nop
-    b safc_loop1
+    b suspend_loop0002
 
 /*
  * @function void restore_registers(uint16_t *saved_sp)

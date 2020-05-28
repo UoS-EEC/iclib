@@ -120,9 +120,7 @@ int main() {
   unsigned iter;
   unsigned func;
 
-  target_init();
-
-  while (1) {
+  for (volatile unsigned i = 0; i < 3; i++) {
     n_0 = 0;
     n_1 = 0;
     n_2 = 0;
@@ -130,7 +128,7 @@ int main() {
     n_4 = 0;
     n_5 = 0;
     n_6 = 0;
-    indicate_begin();
+    indicate_workload_begin();
     for (func = 0; func < 7; func++) {
       seed = (uint32_t)SEED;
       if (func == 0) {
@@ -164,7 +162,8 @@ int main() {
       }
     }
 
-    indicate_end();
+    indicate_workload_end();
     wait();
   }
+  end_experiment();
 }
