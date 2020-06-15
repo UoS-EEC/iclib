@@ -23,4 +23,5 @@ int main(void) {
     wait();
   }
   end_experiment();
+  return 0;
 }

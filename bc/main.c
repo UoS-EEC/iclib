@@ -166,4 +166,5 @@ int main() {
     wait();
   }
   end_experiment();
+  return 0;
 }
