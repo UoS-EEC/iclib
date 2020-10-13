@@ -21,22 +21,20 @@ ELSEIF(${METHOD} STREQUAL "AS")
   target_compile_definitions( ${TESTNAME} PRIVATE -DALLOCATEDSTATE)
 ELSEIF(${METHOD} STREQUAL "MS")
   target_compile_definitions( ${TESTNAME} PRIVATE -DMANAGEDSTATE)
-ELSEIF(${METHOD} STREQUAL "CS")
-  target_compile_definitions( ${TESTNAME} PRIVATE -DCACHEDSTATE)
 ENDIF()
 
 
 IF(${TARGET_ARCH} STREQUAL "msp430")
   IF (${METHOD} STREQUAL "QR")
       target_link_options( ${TESTNAME}
-          PRIVATE -T${CMAKE_CURRENT_LIST_DIR}/../support/msp430fr5994-fram-only.ld)
+        PRIVATE -T${PROJECT_SOURCE_DIR}/lib/support/msp430fr5994-fram-only.ld)
   ELSE ()
       target_link_options( ${TESTNAME}
-          PRIVATE -T${CMAKE_CURRENT_LIST_DIR}/../support/msp430fr5994.ld)
+          PRIVATE -T${PROJECT_SOURCE_DIR}/lib/support/msp430fr5994.ld)
   ENDIF()
 ELSEIF(${TARGET_ARCH} STREQUAL "cm0")
   target_link_options( ${TESTNAME}
-      PRIVATE -T${CMAKE_CURRENT_LIST_DIR}/../support/cm0-FS.ld)
+      PRIVATE -T${PROJECT_SOURCE_DIR}/lib/support/cm0-FS.ld)
 ENDIF()
 
 set_target_properties(${TESTNAME} PROPERTIES SUFFIX ".elf")

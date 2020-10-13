@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 #
 
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.10)
 
 # ------ Options -------
 option(SIMULATION "Enable fused simulation control (via SIMPLE_MONITOR)" ON)
@@ -43,15 +43,6 @@ project(ic-examples)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include_directories(.)
-include_directories(cmsis)
 
-add_subdirectory(support)
-add_subdirectory(iclib)
-add_subdirectory(aes)
-add_subdirectory(matmul)
-add_subdirectory(matmul-tiled)
-add_subdirectory(crc)
-add_subdirectory(activity-recognition)
-add_subdirectory(cem)
-add_subdirectory(bc)
-
+add_subdirectory(apps)
+add_subdirectory(lib)

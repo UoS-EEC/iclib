@@ -5,6 +5,7 @@ build
 GPATH
 GRTAGS
 GTAGS
+.cache
 
 *~
 *.autosave
