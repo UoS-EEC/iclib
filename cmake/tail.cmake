@@ -33,8 +33,8 @@ IF(${TARGET_ARCH} STREQUAL "msp430")
           PRIVATE -T${PROJECT_SOURCE_DIR}/lib/support/msp430fr5994.ld)
   ENDIF()
 ELSEIF(${TARGET_ARCH} STREQUAL "cm0")
-  target_link_options( ${TESTNAME}
-      PRIVATE -T${PROJECT_SOURCE_DIR}/lib/support/cm0-FS.ld)
+    target_link_options( ${TESTNAME}
+      PRIVATE -T${PROJECT_BINARY_DIR}/cm0-${METHOD}.ld)
 ENDIF()
 
 set_target_properties(${TESTNAME} PROPERTIES SUFFIX ".elf")

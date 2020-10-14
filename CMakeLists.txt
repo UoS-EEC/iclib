@@ -34,9 +34,11 @@ ELSEIF(${TARGET_ARCH} STREQUAL "msp430")
 ENDIF()
 
 
-include(${CMAKE_CURRENT_LIST_DIR}/cmake/common.cmake)
 
 project(ic-examples)
+
+include(cmake/common.cmake)
+include(cmake/configure_ld.cmake)
 
 #target_compile_options(aes PUBLIC -finstrument-functions)
 
