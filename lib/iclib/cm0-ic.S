@@ -32,30 +32,54 @@ suspend_stack_and_regs:
     mov r7, sp
     str r7, [r0]
 
-    // Save stack to NVM
-    ldr r4, =__boot_stack_high // Use different stack
+    // Switch to boot stack
+    ldr r4, =__boot_stack_high
     mov sp, r4
+
+    // Save main stack to NVM
+    // r1: Source = sp
+    // r2: Len = __stack_high - sp
+    // r0: Destination = stackSnapShot + (stack_size - len)
+
     push {r0-r3} // Safekeep function arguments
-    mov r1, r7     // src: stack (saved)
-    ldr r4, =__stack_high
-    sub r4, r4, r7 // len: r4 = stack_high - sp
-    ldr r5, =__stack_size
-    add r0, r2, r5 // dst: r5 = snapshotValid + (stack_size-len)
-    sub r0, r0, r4
-    mov r2, r4
+    mov r4, r2 // tmp
+
+    // Source
+    mov r1, r7
+
+    // Len
+    ldr r2, =__stack_high
+    sub r2, r2, r1
+
+    // Destination
+    mov r0, r4 // *stackSnapshot
+    ldr r4, =__stack_size
+    add r0, r0, r4
+    sub r0, r0, r2
+
     bl memcpy
     pop {r0-r3}
 
-    // Set flag & suspend execution
+    // Set snapshotValid
     mov r4, #1
-    str r4, [r1] //Set snapshotValid
-    mov r4, #0
-    ldr r5, =0x40000030 // OUTPORT_OUT
-    str r4, [r5] //de-assert keepAlive
+    str r4, [r1]
+
+    // Optionally shut off power & sleep
+    cmp r3, #0
+    bgt return_ssar
+
+    bl deassert_keep_alive
     wfe
+    b suspend_loop0
+
+    // Return via restore_registers
+return_ssar:
+    bl restore_registers
+
 suspend_loop0: // Should never get here
     nop
     b suspend_loop0
+
 
 /* @function void suspend_regs(uint32_t *saved_sp, int * snapshotValid)
  * @brief pushes registers to stack, then sleeps.
@@ -78,16 +102,91 @@ suspend_regs:
     mov r7, sp
     str r7, [r0]
 
-    // Set flag & suspend execution
+    // Set snapshotValid
     mov r4, #1
-    str r4, [r1] //Set snapshotValid
-    mov r4, #0
-    ldr r5, =0x40000030 // OUTPORT_OUT
-    str r4, [r5] //de-assert keepAlive
+    str r4, [r1]
+
+    // Optionally shut off power & sleep
+    cmp r2, #0
+    bgt return_sr
+
+    // Suspend execution
+    bl deassert_keep_alive
     wfe
-suspend_loop0002: // Should never get here
+    b suspend_loop_sr
+
+    // Return via restore_registers
+return_sr:
+    bl restore_registers
+
+suspend_loop_sr: // Should never get here
     nop
-    b suspend_loop0002
+    b suspend_loop_sr
+
+/*
+ * @function void suspend_and_flush_cache(uint32_t *saved_sp,
+ *                                        int *snapshotValid,
+ *                                        bool doReturn)
+ * @brief pushes registers to stack and flushes data cache, then
+ *        returns if doReturn is true, otherwise sleeps.
+ */
+.globl suspend_and_flush_cache
+.type suspend_and_flush_cache, %function
+suspend_and_flush_cache:
+    // Push core registers to stack
+    push {r0-r7,lr}
+    mov r4, r8
+    mov r5, r9
+    mov r6, r10
+    mov r7, r11
+    push {r4-r7}
+    mov r4, r12
+    push {r4}
+    mrs r4, apsr /* should this be xpsr?*/
+    push {r4}
+
+    // Save stack pointer in NVM @r0
+    mov r7, sp
+    str r7, [r0]
+
+    // Flush cache
+    mov r4, #0x2 // DCACHE_CTRL_FLUSH
+    ldr r5, =0x40000020 // DCACHE_CTRL_CSR
+    str r4, [r5]
+  safc_loop0: // while(flushing)
+    ldr r4, [r5]
+    cmp r4, #0x2
+    beq safc_loop0
+
+    // Set snapshotValid
+    mov r4, #1
+    str r4, [r1]
+
+    // Flush again to persist snapshotValid
+    mov r4, #0x2 // DCACHE_CTRL_FLUSH
+    ldr r5, =0x40000020 // DCACHE_CTRL_CSR
+    str r4, [r5]
+  safc_loop1: // while(flushing)
+    ldr r4, [r5]
+    cmp r4, #0x2
+    beq safc_loop1
+
+    // Optionally shut off power & sleep
+    cmp r2, #0
+    bgt return_safc
+
+    // Suspend execution
+    bl deassert_keep_alive
+    wfe
+    b suspend_loop_safc
+
+    // Return via restore_registers
+return_safc:
+    bl restore_registers
+
+suspend_loop_safc: // Should never get here
+    nop
+    b suspend_loop_safc
 
 /*
  * @function void restore_registers(uint16_t *saved_sp)

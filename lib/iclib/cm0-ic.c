@@ -19,6 +19,7 @@
 // ------------- CONSTANTS -----------------------------------------------------
 extern uint8_t __stack_low, __stack_high, __stack_size;
 extern uint8_t __data_low, __data_high, __data_loadLow;
+extern uint8_t __bss_low, __bss_high, __bss_loadLow;
 extern uint8_t __mmdata_low, __mmdata_high, __mmdata_loadLow;
 extern uint8_t __boot_stack_high;
 
@@ -38,8 +39,8 @@ static void checkpoint(bool suspend);
 
 /* ------ ASM functions ---------------------------------------------------- */
 extern void suspend_stack_and_regs(uint32_t *saved_sp, int *snapshotValid,
-                                   uint32_t *stackSnapshot);
-extern void suspend_regs(uint32_t *saved_sp, int *snapshotValid);
+                                   uint32_t *stackSnapshot, bool doreturn);
+extern void suspend_regs(uint32_t *saved_sp, int *snapshotValid, bool doreturn);
 extern void restore_registers(uint32_t *saved_sp);
 
 /* ------ Function Declarations ---------------------------------------------*/
@@ -50,6 +51,7 @@ void __attribute__((optimize(1))) _start() {
 
 #if defined(ALLOCATEDSTATE) || defined(MANAGEDSTATE)
   memcpy(&__data_low, &__data_loadLow, &__data_high - &__data_low);
+  memcpy(&__bss_low, &__bss_loadLow, &__bss_high - &__bss_low);
   const uint32_t mmdata_size = &__mmdata_high - &__mmdata_low;
   ic_update_thresholds(mmdata_size, mmdata_size);
   mm_init_lru();
@@ -96,10 +98,13 @@ __attribute__((optimize(1))) static void checkpoint(bool suspend) {
   // Save data, mmdata & stack
   mm_flush();
   memcpy(&__data_loadLow, &__data_low, &__data_high - &__data_low);
-  suspend_stack_and_regs(&saved_stack_pointer, &snapshotValid, stack_snapshot);
-#elif defined(QUICKRECALL)
-  // Save registers only
-  suspend_regs(&saved_stack_pointer, &snapshotValid);
+  memcpy(&__bss_loadLow, &__bss_low, &__bss_high - &__bss_low);
+  suspend_stack_and_regs(&saved_stack_pointer, &snapshotValid, stack_snapshot,
+                         !suspend);
+#elif defined(QUICKRECALL) // Save registers only
+  suspend_regs(&saved_stack_pointer, &snapshotValid, !suspend);
+#else
+#error "ICLIB: IC method not defined or invalid."
 #endif
 }
 
