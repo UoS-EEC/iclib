@@ -50,6 +50,12 @@ void enable_interrupt();
 // Check global interrupt enable state
 bool get_interrupt_enable();
 
+// Assert KeepAlive
+void assert_keep_alive();
+
+// De-assert KeepAlive
+void deassert_keep_alive();
+
 // ------ Functions that must be implemented by benchmarks ------
 
 /**
