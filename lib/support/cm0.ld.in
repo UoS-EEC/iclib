@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2020, Arm Limited and Contributors.
+ * All rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
 EXTERN (_vectors)
 EXTERN (__VECTOR_TABLE)
 ENTRY(Reset_Handler)
@@ -75,26 +82,32 @@ SECTIONS
     __fini_array_end = .;
   } >invm
 
-  /* Combined .data and .bss section, as .bss makes no sense in intermittent
-   * computing.
-   */
+  .bss : {
+     __bss_start__ = .;
+    PROVIDE(__bss_low = .);
+    *(.bss)
+    *(.bss*)
+    *(COMMON)
+    _ebss = .;
+    __bss_end__ = .;
+    PROVIDE(__bss_high = .);
+  } > sram
+
+  .bssbackup : {
+    PROVIDE(__bss_loadLow = .);
+    . += SIZEOF(.bss);
+    PROVIDE(__bss_loadHigh = .);
+  } > dnvm
+
   .data : {
     _data = .;
     _sidata = .;
-     __bss_start__ = .;
-    PROVIDE(__bss_low = .);
     PROVIDE(__data_low = .);
     . = ALIGN(4);
     *(.data*)   /* Read-write initialized data */
-    *(.bss)
-    *(.bss*)    /* Read-write zero initialized data */
-    *(COMMON)
     . = ALIGN(4);
     _edata = .;
-    _ebss = .;
-    __bss_end__ = .;
     PROVIDE(__data_high = .);
-    PROVIDE(__bss_high = .);
   } > @LD_DATA_ALLOC@
 
   _data_loadaddr = LOADADDR(.data);

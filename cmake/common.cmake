@@ -75,6 +75,8 @@ ELSEIF(${TARGET_ARCH} STREQUAL "cm0")
       -nostartfiles
       -ffreestanding
       -fomit-frame-pointer
+      -ffast-math
+      -fno-zero-initialized-in-bss
     )
 
   link_libraries(
