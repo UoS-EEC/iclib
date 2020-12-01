@@ -1,0 +1,6 @@
+[submodule "lib/cmsis-dsp"]
+	path = lib/cmsis-dsp
+	url = git@git.research.arm.com:sivsli01/cmsis-dsp.git
+[submodule "lib/CMSIS_5"]
+	path = lib/CMSIS_5
+	url = https://github.com/ARM-software/CMSIS_5.git
