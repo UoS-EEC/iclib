@@ -39,10 +39,9 @@ ENDIF()
 
 project(ic-examples)
 
-include(cmake/common.cmake)
-include(cmake/configure_ld.cmake)
-
-#target_compile_options(aes PUBLIC -finstrument-functions)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+include(common)
+include(configure_ld)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 

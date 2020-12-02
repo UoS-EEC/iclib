@@ -8,3 +8,13 @@
 include_directories(cmsis)
 add_subdirectory(support)
 add_subdirectory(iclib)
+
+# ------ Submodules ------
+
+# CMSIS_5
+set(ROOT ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5)
+set(ARM_CPU "cortex-m0")
+option(DISABLEFLOAT16 "Disable support for f16 format" ON)
+list(APPEND CMAKE_MODULE_PATH ${ROOT}/CMSIS/DSP/Toolchain)
+include(GCC)
+add_subdirectory(CMSIS_5/CMSIS/DSP/Source)
