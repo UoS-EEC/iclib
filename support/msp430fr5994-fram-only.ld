@@ -331,13 +331,13 @@ SECTIONS
   PROVIDE(__data_loadHigh = LOADADDR(.lower.data) + SIZEOF(.lower.data) + SIZEOF(.data));
 
 .mmdata : {
-  PROVIDE(__mmdata_start = .);
+  PROVIDE(__mmdata_low = .);
   *(.mmdata)
-  PROVIDE(__mmdata_end = .);
+  PROVIDE(__mmdata_high = .);
 } > FRAM
 
-PROVIDE(__mmdata_loadStart = LOADADDR(.mmdata));
-PROVIDE(__mmdata_loadEnd = LOADADDR(.mmdata) + SIZEOF(.mmdata));
+PROVIDE(__mmdata_loadLow = LOADADDR(.mmdata));
+PROVIDE(__mmdata_loadHigh = LOADADDR(.mmdata) + SIZEOF(.mmdata));
 
 .npdata : {
   PROVIDE(__npdata_low = .);

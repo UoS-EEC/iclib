@@ -1,31 +1,54 @@
+/*
+ * Copyright (c) 2019-2020, University of Southampton and Contributors.
+ * All rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include "support/support.h"
+#include "cm0-support.h"
+
+#ifdef SIMULATION
 #include <fused.h>
+#endif
 
-void indicate_begin() {
-   SIMPLE_MONITOR = SIMPLE_MONITOR_INDICATE_BEGIN;
-;}
-
-void indicate_end() {
-  SIMPLE_MONITOR = SIMPLE_MONITOR_INDICATE_END;
+void indicate_workload_begin() {
+#ifdef SIMULATION
+  SIMPLE_MONITOR = SIMPLE_MONITOR_INDICATE_BEGIN;
+#endif
+  ;
 }
 
-void fused_end_simulation() {
+void indicate_workload_end() {
+#ifdef SIMULATION
+  SIMPLE_MONITOR = SIMPLE_MONITOR_INDICATE_END;
+#endif
+}
+
+void end_experiment() {
+#ifdef SIMULATION
   SIMPLE_MONITOR = SIMPLE_MONITOR_KILL_SIM;
-  while(1); // Just in case
+#endif
+  while (1)
+    ;
 }
 
 void wait() {
   for (volatile uint32_t i = 0; i < 10000ll; i++)
-    ; // delay
-}
-
-void fused_assert (bool c) {
-  if (!c) {
-    SIMPLE_MONITOR = SIMPLE_MONITOR_TEST_FAIL;
-    while(1);
-  }
+    ;  // delay
 }
 
 void target_init() { return; }
+
+void disable_interrupt() { __asm__ volatile("cpsid i" :); }
+
+void enable_interrupt() { __asm__ volatile("cpsie i" :); }
+
+__attribute__((naked)) bool get_interrupt_enable() {
+  __asm__ volatile(
+      "mrs r0, primask\n"
+      "bx lr"
+      :);
+}

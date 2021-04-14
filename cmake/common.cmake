@@ -38,8 +38,13 @@ IF(${TARGET_ARCH} STREQUAL "msp430")
       $ENV{MSP430_GCC_ROOT}/msp430-elf/lib/430/
       $ENV{MSP430_GCC_ROOT}/lib/gcc/msp430-elf/8.2.0/430
       $ENV{MSP430_INC}/include
-      $ENV{HOME}/git-arm/fused/include/
       )
+
+    include_directories(
+      $ENV{FUSED_ROOT}/include
+      $ENV{MSP430_INC}/include
+      )
+
 
   link_libraries( # Global link flags
       # Removing standard libs and startup code to prevent unnecessary initialization
@@ -54,7 +59,7 @@ ELSEIF(${TARGET_ARCH} STREQUAL "cm0")
 
   include_directories(
     $ENV{ARM_GCC_ROOT}/arm-none-eabi/include
-    $ENV{HOME}/git-arm/fused/include/
+      $ENV{FUSED_ROOT}/include
     )
 
   # Make sure only thumb-libraries are used
