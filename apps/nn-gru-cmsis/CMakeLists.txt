@@ -6,7 +6,7 @@
 
 cmake_minimum_required(VERSION 3.0)
 
-FOREACH(METHOD "AS" "CS")
+FOREACH(METHOD "AS")
   set(TESTNAME "nn-gru-cmsis-${METHOD}-${TARGET_ARCH}")
   add_executable(${TESTNAME})
   target_sources(${TESTNAME}

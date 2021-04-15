@@ -12,5 +12,7 @@ add_subdirectory(crc)
 add_subdirectory(activity-recognition)
 add_subdirectory(cem)
 add_subdirectory(bc)
+
+IF(${TARGET_ARCH} STREQUAL "cm0")
 add_subdirectory(nn-gru-cmsis)
-add_subdirectory(qrencode)
+ENDIF()

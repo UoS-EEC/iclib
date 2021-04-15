@@ -11,19 +11,19 @@
  * Modified 2020 for use with ICLib by Sivert Sliper, University of Southamption
  */
 
+#include "lib/iclib/ic.h"
+#include "lib/support/support.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "lib/iclib/ic.h"
-#include "lib/support/support.h"
 
 /* ------ Parameters ------ */
 // Number of samples to discard before recording training set
 #define NUM_WARMUP_SAMPLES 3
 #define ACCEL_WINDOW_SIZE 3
 #define MODEL_SIZE 16
-#define SAMPLE_NOISE_FLOOR 10  // TODO: made up value
+#define SAMPLE_NOISE_FLOOR 10 // TODO: made up value
 // Number of classifications to complete in one experiment
 #define SAMPLES_TO_COLLECT 128
 
@@ -56,7 +56,7 @@ typedef enum {
   MODE_IDLE = 3,
   MODE_TRAIN_STATIONARY = 2,
   MODE_TRAIN_MOVING = 1,
-  MODE_RECOGNIZE = 0,  // default
+  MODE_RECOGNIZE = 0, // default
 } run_mode_t;
 
 typedef struct {
@@ -133,9 +133,9 @@ static void featurize(features_t *features, accelWindow aWin) {
   accelReading mean;
   mean.x = mean.y = mean.z = 0;
   for (int i = 0; i < ACCEL_WINDOW_SIZE; i++) {
-    mean.x += aWin[i].x;  // x
-    mean.y += aWin[i].y;  // y
-    mean.z += aWin[i].z;  // z
+    mean.x += aWin[i].x; // x
+    mean.y += aWin[i].y; // y
+    mean.z += aWin[i].z; // z
   }
   /*
      mean.x = mean.x / ACCEL_WINDOW_SIZE;
@@ -150,11 +150,11 @@ static void featurize(features_t *features, accelWindow aWin) {
   stddev.x = stddev.y = stddev.z = 0;
   for (int i = 0; i < ACCEL_WINDOW_SIZE; i++) {
     stddev.x +=
-        aWin[i].x > mean.x ? aWin[i].x - mean.x : mean.x - aWin[i].x;  // x
+        aWin[i].x > mean.x ? aWin[i].x - mean.x : mean.x - aWin[i].x; // x
     stddev.y +=
-        aWin[i].y > mean.y ? aWin[i].y - mean.y : mean.y - aWin[i].y;  // y
+        aWin[i].y > mean.y ? aWin[i].y - mean.y : mean.y - aWin[i].y; // y
     stddev.z +=
-        aWin[i].z > mean.z ? aWin[i].z - mean.z : mean.z - aWin[i].z;  // z
+        aWin[i].z > mean.z ? aWin[i].z - mean.z : mean.z - aWin[i].z; // z
   }
   /*
      stddev.x = stddev.x / (ACCEL_WINDOW_SIZE - 1);
@@ -224,13 +224,13 @@ static class_t classify(features_t *features, model_t *model) {
 static void record_stats(stats_t *stats, class_t class) {
   stats->totalCount++;
   switch (class) {
-    case CLASS_MOVING:
-      stats->movingCount++;
-      break;
+  case CLASS_MOVING:
+    stats->movingCount++;
+    break;
 
-    case CLASS_STATIONARY:
-      stats->stationaryCount++;
-      break;
+  case CLASS_STATIONARY:
+    stats->stationaryCount++;
+    break;
   }
 }
 
@@ -277,17 +277,16 @@ void recognize(model_t *model) {
   }
 }
 
-int main() {
+void main() {
   for (volatile unsigned i = 0; i < 2; i++) {
     indicate_workload_begin();
     train(model.moving);
     train(model.stationary);
     recognize(&model);
     indicate_workload_end();
-    wait();  // Delay
+    wait(); // Delay
   }
   end_experiment();
-  return 0;
 }
 
 static uint16_t sqrt16(uint32_t x) {

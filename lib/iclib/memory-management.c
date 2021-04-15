@@ -40,11 +40,7 @@ struct LRU_candidate {
 #endif
 
 #ifdef MSP430_ARCH
-#define memcpy fastmemcpy // Replace memcpy with fast implementation
-#endif
-
-#ifdef MSP430_ARCH
-#define MEMCPY MEMCPY
+#define MEMCPY fastmemcpy
 #define IRQ_DISABLE                                                            \
   do {                                                                         \
     __disable_interrupt();                                                     \

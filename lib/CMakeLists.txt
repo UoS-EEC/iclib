@@ -5,12 +5,16 @@
 # SPDX-License-Identifier: BSD-3-Clause
 #
 
-include_directories(cmsis)
+IF(${TARGET_ARCH} STREQUAL "cm0")
+  include_directories(cmsis)
+ENDIF()
+
 add_subdirectory(support)
 add_subdirectory(iclib)
 
 # ------ Submodules ------
 
+IF(${TARGET_ARCH} STREQUAL "cm0")
 # CMSIS_5
 set(ROOT ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5)
 set(ARM_CPU "cortex-m0")
@@ -22,3 +26,4 @@ add_subdirectory(CMSIS_5/CMSIS/NN/Source)
 
 # Supporess some warnings from CMSISNN
 target_compile_options(CMSISNNConvolutions PRIVATE "-Wno-unused")
+endif()
